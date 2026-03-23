@@ -57,6 +57,8 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
       const page = pages[i]!;
       const isPricing =
         page.kind === "section" && page.sectionType === "pricing-options";
+      const isAboutEya =
+        page.kind === "section" && page.sectionType === "about-eya";
       const isPricelist =
         page.kind === "section" && page.sectionType === "investment";
       const isTerms =
@@ -64,7 +66,7 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
       const canvasBg =
         page.kind === "cover"
           ? PROPOSAL_COVER_STYLES.bg
-          : isPricing
+          : isPricing || isAboutEya
             ? PROPOSAL_PRICING_OPTIONS_THEME.bg
             : isPricelist || isTerms
               ? PROPOSAL_PRICELIST_THEME.bg
@@ -110,7 +112,7 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
             node.style.color = PROPOSAL_COVER_STYLES.text;
             return;
           }
-          if (isPricing) {
+          if (isPricing || isAboutEya) {
             node.style.backgroundColor = PROPOSAL_PRICING_OPTIONS_THEME.bg;
             node.style.color = PROPOSAL_PRICING_OPTIONS_THEME.text;
             return;

@@ -53,6 +53,11 @@ function formatPriceCell(
   return formatEuro(price);
 }
 
+function stripMarkdownLinks(s: string): string {
+  // Converts `[label](url)` -> `label` for this renderer.
+  return s.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
 export interface ProposalRendererProps {
   proposal: Proposal;
   page: ProposalPageModel;
@@ -230,6 +235,8 @@ export default function ProposalRenderer({
   const { title, continuation, payload } = page;
   const isPricingPage =
     page.kind === "section" && page.sectionType === "pricing-options";
+  const isAboutEyaPage =
+    page.kind === "section" && page.sectionType === "about-eya";
   const isPricelistPage =
     page.kind === "section" && page.sectionType === "investment";
   const isTermsPage =
@@ -238,7 +245,7 @@ export default function ProposalRenderer({
     page.kind === "section" && page.sectionType === "pricing-options";
   const investmentProjectLabel =
     meta.projectName.trim() || "Project name";
-  const pt = isPricingPage
+  const pt = isPricingPage || isAboutEyaPage
     ? PROPOSAL_PRICING_OPTIONS_THEME
     : isPricelistPage
       ? PROPOSAL_PRICELIST_THEME
@@ -493,6 +500,33 @@ function SectionBody({
     );
   }
 
+  if (payload.type === "about-eya") {
+    return (
+      <div style={bodyStyle}>
+        {payload.showHeadline && payload.headline.trim() ? (
+          <div
+            style={{
+              fontFamily: sans,
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.15,
+              marginBottom: 14,
+              color: t.accent,
+            }}
+          >
+            {stripMarkdownLinks(payload.headline)}
+          </div>
+        ) : null}
+        {payload.paragraphs.map((p, i) => (
+          <p key={i} style={{ margin: "0 0 14px" }}>
+            {stripMarkdownLinks(p)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
   if (payload.type === "project-scope") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -505,22 +539,85 @@ function SectionBody({
 
   if (payload.type === "pricing-options") {
     const d = payload.data;
+    const hasB = !!d.optionBEnabled;
     if (payload.slice === "compare") {
       return (
         <div>
           {d.intro.trim() ? (
             <p style={{ ...bodyStyle, margin: "0 0 18px" }}>{d.intro}</p>
           ) : null}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1px 1fr",
-              gap: 0,
-              marginBottom: 20,
-              alignItems: "stretch",
-            }}
-          >
-            <div style={{ paddingRight: 20 }}>
+          {hasB ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1px 1fr",
+                gap: 0,
+                marginBottom: 20,
+                alignItems: "stretch",
+              }}
+            >
+              <div style={{ paddingRight: 20 }}>
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 10,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: t.muted,
+                    marginBottom: 6,
+                  }}
+                >
+                  {d.optionATitle}
+                </div>
+                <div
+                  style={{
+                    fontFamily: sans,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    color: t.accent,
+                  }}
+                >
+                  {d.summaryA}
+                </div>
+              </div>
+              <div
+                style={{
+                  width: 1,
+                  background: t.border,
+                  minHeight: "100%",
+                  alignSelf: "stretch",
+                }}
+                aria-hidden
+              />
+              <div style={{ paddingLeft: 20 }}>
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 10,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: t.muted,
+                    marginBottom: 6,
+                  }}
+                >
+                  {d.optionBTitle}
+                </div>
+                <div
+                  style={{
+                    fontFamily: sans,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    color: t.accent,
+                  }}
+                >
+                  {d.summaryB}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginBottom: 20, paddingRight: 20 }}>
               <div
                 style={{
                   fontFamily: mono,
@@ -545,116 +642,141 @@ function SectionBody({
                 {d.summaryA}
               </div>
             </div>
-            <div
+          )}
+
+          {hasB ? (
+            <table
               style={{
-                width: 1,
-                background: t.border,
-                minHeight: "100%",
-                alignSelf: "stretch",
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 12,
               }}
-              aria-hidden
-            />
-            <div style={{ paddingLeft: 20 }}>
-              <div
-                style={{
-                  fontFamily: mono,
-                  fontSize: 10,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: t.muted,
-                  marginBottom: 6,
-                }}
-              >
-                {d.optionBTitle}
-              </div>
-              <div
-                style={{
-                  fontFamily: sans,
-                  fontSize: 18,
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  color: t.accent,
-                }}
-              >
-                {d.summaryB}
-              </div>
-            </div>
-          </div>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 12,
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  fontFamily: mono,
-                  fontSize: 9,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: t.muted,
-                  borderBottom: `1px solid ${t.border}`,
-                }}
-              >
-                <th style={{ textAlign: "left", padding: "0 10px 10px 0", fontWeight: 400 }}>
-                  {""}
-                </th>
-                <th style={{ textAlign: "left", padding: "0 0 10px", fontWeight: 400, width: "34%" }}>
-                  {d.optionATitle.replace(/^Option [AB] — /i, "A — ")}
-                </th>
-                <th
-                  style={{
-                    textAlign: "left",
-                    padding: "0 0 10px 16px",
-                    fontWeight: 400,
-                    width: "34%",
-                    borderLeft: `1px solid ${t.border}`,
-                  }}
-                >
-                  {d.optionBTitle.replace(/^Option [AB] — /i, "B — ")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.rows.map((row) => (
+            >
+              <thead>
                 <tr
-                  key={row.id}
                   style={{
+                    fontFamily: mono,
+                    fontSize: 9,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: t.muted,
                     borderBottom: `1px solid ${t.border}`,
-                    fontFamily: sans,
-                    fontWeight: 300,
-                    verticalAlign: "top",
                   }}
                 >
-                  <td
+                  <th style={{ textAlign: "left", padding: "0 10px 10px 0", fontWeight: 400 }}>
+                    {""}
+                  </th>
+                  <th style={{ textAlign: "left", padding: "0 0 10px", fontWeight: 400, width: "34%" }}>
+                    {d.optionATitle.replace(/^Option [AB] — /i, "A — ")}
+                  </th>
+                  <th
                     style={{
-                      padding: "10px 10px 10px 0",
-                      fontFamily: mono,
-                      fontSize: 9,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      color: t.muted,
-                      width: "28%",
-                    }}
-                  >
-                    {row.label}
-                  </td>
-                  <td style={{ padding: "10px 8px 10px 0", color: t.text }}>{row.optionA}</td>
-                  <td
-                    style={{
-                      padding: "10px 0 10px 16px",
-                      color: t.text,
+                      textAlign: "left",
+                      padding: "0 0 10px 16px",
+                      fontWeight: 400,
+                      width: "34%",
                       borderLeft: `1px solid ${t.border}`,
                     }}
                   >
-                    {row.optionB}
-                  </td>
+                    {d.optionBTitle.replace(/^Option [AB] — /i, "B — ")}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {d.rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    style={{
+                      borderBottom: `1px solid ${t.border}`,
+                      fontFamily: sans,
+                      fontWeight: 300,
+                      verticalAlign: "top",
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "10px 10px 10px 0",
+                        fontFamily: mono,
+                        fontSize: 9,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: t.muted,
+                        width: "28%",
+                      }}
+                    >
+                      {row.label}
+                    </td>
+                    <td style={{ padding: "10px 8px 10px 0", color: t.text }}>{row.optionA}</td>
+                    <td
+                      style={{
+                        padding: "10px 0 10px 16px",
+                        color: t.text,
+                        borderLeft: `1px solid ${t.border}`,
+                      }}
+                    >
+                      {row.optionB}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 12,
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 9,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: t.muted,
+                    borderBottom: `1px solid ${t.border}`,
+                  }}
+                >
+                  <th style={{ textAlign: "left", padding: "0 10px 10px 0", fontWeight: 400 }}>
+                    {""}
+                  </th>
+                  <th style={{ textAlign: "left", padding: "0 0 10px", fontWeight: 400, width: "72%" }}>
+                    {d.optionATitle.replace(/^Option [AB] — /i, "A — ")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    style={{
+                      borderBottom: `1px solid ${t.border}`,
+                      fontFamily: sans,
+                      fontWeight: 300,
+                      verticalAlign: "top",
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "10px 10px 10px 0",
+                        fontFamily: mono,
+                        fontSize: 9,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: t.muted,
+                        width: "28%",
+                      }}
+                    >
+                      {row.label}
+                    </td>
+                    <td style={{ padding: "10px 8px 10px 0", color: t.text }}>{row.optionA}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       );
     }
@@ -681,21 +803,23 @@ function SectionBody({
           </div>
           <div style={{ ...bodyStyle, whiteSpace: "pre-wrap" }}>{d.narrativeA}</div>
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 10,
-              color: t.accent,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginBottom: 8,
-            }}
-          >
-            {d.optionBTitle}
+        {hasB ? (
+          <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                fontFamily: mono,
+                fontSize: 10,
+                color: t.accent,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              {d.optionBTitle}
+            </div>
+            <div style={{ ...bodyStyle, whiteSpace: "pre-wrap" }}>{d.narrativeB}</div>
           </div>
-          <div style={{ ...bodyStyle, whiteSpace: "pre-wrap" }}>{d.narrativeB}</div>
-        </div>
+        ) : null}
         <div
           style={{
             fontFamily: mono,
@@ -706,7 +830,7 @@ function SectionBody({
             marginBottom: 8,
           }}
         >
-          Both options include
+          {hasB ? "Both options include" : "Includes"}
         </div>
         <div style={{ ...bodyStyle, marginBottom: 16, whiteSpace: "pre-wrap" }}>
           {d.bothInclude}
@@ -721,7 +845,7 @@ function SectionBody({
             marginBottom: 8,
           }}
         >
-          Not included in either option
+          {hasB ? "Not included in either option" : "Not included"}
         </div>
         <div style={{ ...bodyStyle, marginBottom: 16, whiteSpace: "pre-wrap" }}>
           {d.notIncluded}

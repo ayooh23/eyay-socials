@@ -21,6 +21,7 @@ type SubTab = "details" | "sections" | "content";
 
 const CONTENT_TYPES: SectionType[] = [
   "about",
+  "about-eya",
   "project-scope",
   "deliverables",
   "how-we-work",
@@ -392,6 +393,9 @@ function ContentTab({
       {contentSection === "about" ? (
         <AboutFields proposal={proposal} updateActive={updateActive} />
       ) : null}
+      {contentSection === "about-eya" ? (
+        <EyaAboutFields proposal={proposal} updateActive={updateActive} />
+      ) : null}
       {contentSection === "project-scope" ? (
         <ProjectScopeFields proposal={proposal} updateActive={updateActive} />
       ) : null}
@@ -475,6 +479,53 @@ function AboutFields({
           }
         />
       </div>
+    </>
+  );
+}
+
+function EyaAboutFields({
+  proposal,
+  updateActive,
+}: {
+  proposal: Proposal;
+  updateActive: ProposalEditorProps["updateActive"];
+}) {
+  const a = proposal.eyaAbout;
+  const patch = (partial: Partial<typeof a>) =>
+    updateActive((p) => ({
+      ...p,
+      eyaAbout: { ...p.eyaAbout, ...partial },
+    }));
+
+  const DEFAULT_HEADLINE = "your idea from this morning, built today.";
+  const DEFAULT_BODY =
+    "eyay studio is a two-person digital product studio based in Amsterdam. We design and build products that sit at the intersection of strategy, technology, and craft — from first brief to shipped product.\n\nWe work AI-native: research, design, and development all move faster because we use the right tools at every stage. What we don't automate is judgment — what to build, how it should feel, and whether it's actually ready.\n\nWe're end-to-end by design. The same people who frame the problem ship the product. No handoffs, no lost context, no PDFs thrown over a wall.\n\n23plusone Live is a project we believe in. The collective has built something that genuinely works — and we want to help take it further.\n\n[hello@eyay.studio](mailto:hello@eyay.studio) — [eyay.studio](http://eyay.studio) — Amsterdam, Netherlands";
+
+  return (
+    <>
+      <div className="ctrl">
+        <label>headline</label>
+        <input
+          type="text"
+          value={a.headline}
+          onChange={(e) => patch({ headline: e.target.value })}
+        />
+      </div>
+      <div className="ctrl">
+        <label>boilerplate body</label>
+        <textarea
+          rows={10}
+          value={a.body}
+          onChange={(e) => patch({ body: e.target.value })}
+        />
+      </div>
+      <button
+        type="button"
+        className="btn btn-g btn-sm"
+        onClick={() => patch({ headline: DEFAULT_HEADLINE, body: DEFAULT_BODY })}
+      >
+        Reset to boilerplate
+      </button>
     </>
   );
 }
@@ -1450,12 +1501,37 @@ function PricingOptionsFields({
   return (
     <>
       <div className="ctrl">
-        <label>intro (why two tiers)</label>
+        <label>intro</label>
         <textarea
           rows={3}
           value={o.intro}
           onChange={(e) => patch({ intro: e.target.value })}
         />
+      </div>
+      <div className="ctrl">
+        <label>investment options</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+            {o.optionBEnabled ? "Offer both options" : "Offer only option A"}
+          </span>
+          {o.optionBEnabled ? (
+            <button
+              type="button"
+              className="btn btn-g btn-sm"
+              onClick={() => patch({ optionBEnabled: false })}
+            >
+              Delete option B
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-p btn-sm"
+              onClick={() => patch({ optionBEnabled: true })}
+            >
+              + add option B
+            </button>
+          )}
+        </div>
       </div>
       <div className="ctrl">
         <label>option A title</label>
@@ -1465,14 +1541,16 @@ function PricingOptionsFields({
           onChange={(e) => patch({ optionATitle: e.target.value })}
         />
       </div>
-      <div className="ctrl">
-        <label>option B title</label>
-        <input
-          type="text"
-          value={o.optionBTitle}
-          onChange={(e) => patch({ optionBTitle: e.target.value })}
-        />
-      </div>
+      {o.optionBEnabled ? (
+        <div className="ctrl">
+          <label>option B title</label>
+          <input
+            type="text"
+            value={o.optionBTitle}
+            onChange={(e) => patch({ optionBTitle: e.target.value })}
+          />
+        </div>
+      ) : null}
       <div className="ctrl">
         <label>summary A (one line)</label>
         <input
@@ -1481,14 +1559,16 @@ function PricingOptionsFields({
           onChange={(e) => patch({ summaryA: e.target.value })}
         />
       </div>
-      <div className="ctrl">
-        <label>summary B</label>
-        <input
-          type="text"
-          value={o.summaryB}
-          onChange={(e) => patch({ summaryB: e.target.value })}
-        />
-      </div>
+      {o.optionBEnabled ? (
+        <div className="ctrl">
+          <label>summary B</label>
+          <input
+            type="text"
+            value={o.summaryB}
+            onChange={(e) => patch({ summaryB: e.target.value })}
+          />
+        </div>
+      ) : null}
       <div className="sbl">comparison rows</div>
       {o.rows.map((row) => (
         <div
@@ -1523,18 +1603,20 @@ function PricingOptionsFields({
               patchRows(next);
             }}
           />
-          <input
-            type="text"
-            placeholder="Option B cell"
-            value={row.optionB}
-            style={{ marginTop: 6 }}
-            onChange={(e) => {
-              const next = o.rows.map((x) =>
-                x.id === row.id ? { ...x, optionB: e.target.value } : x,
-              );
-              patchRows(next);
-            }}
-          />
+          {o.optionBEnabled ? (
+            <input
+              type="text"
+              placeholder="Option B cell"
+              value={row.optionB}
+              style={{ marginTop: 6 }}
+              onChange={(e) => {
+                const next = o.rows.map((x) =>
+                  x.id === row.id ? { ...x, optionB: e.target.value } : x,
+                );
+                patchRows(next);
+              }}
+            />
+          ) : null}
           <button
             type="button"
             className="btn btn-g btn-sm"
@@ -1571,16 +1653,18 @@ function PricingOptionsFields({
           onChange={(e) => patch({ narrativeA: e.target.value })}
         />
       </div>
+      {o.optionBEnabled ? (
+        <div className="ctrl">
+          <label>narrative — option B</label>
+          <textarea
+            rows={5}
+            value={o.narrativeB}
+            onChange={(e) => patch({ narrativeB: e.target.value })}
+          />
+        </div>
+      ) : null}
       <div className="ctrl">
-        <label>narrative — option B</label>
-        <textarea
-          rows={5}
-          value={o.narrativeB}
-          onChange={(e) => patch({ narrativeB: e.target.value })}
-        />
-      </div>
-      <div className="ctrl">
-        <label>both options include</label>
+        <label>{o.optionBEnabled ? "both options include" : "includes"}</label>
         <textarea
           rows={3}
           value={o.bothInclude}
@@ -1588,7 +1672,9 @@ function PricingOptionsFields({
         />
       </div>
       <div className="ctrl">
-        <label>not included (either option)</label>
+        <label>
+          {o.optionBEnabled ? "not included (either option)" : "not included"}
+        </label>
         <textarea
           rows={3}
           value={o.notIncluded}

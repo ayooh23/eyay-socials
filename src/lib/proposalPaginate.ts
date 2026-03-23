@@ -18,6 +18,7 @@ const MAX_CONTENT_PX = 880;
 export const SECTION_TITLES: Record<SectionType, string> = {
   cover: "Cover",
   about: "About the project",
+  "about-eya": "About eyay",
   "project-scope": "Product & scope",
   deliverables: "What we’ll build",
   "how-we-work": "How we work",
@@ -316,6 +317,38 @@ export function buildProposalPages(proposal: Proposal): ProposalPageModel[] {
       );
       chunks.forEach((paragraphs, i) => {
         const payload: SectionPagePayload = { type: "about", paragraphs };
+        pages.push({
+          key: key(),
+          kind: "section",
+          sectionType: st,
+          title: SECTION_TITLES[st],
+          continuation: i > 0,
+          payload,
+        });
+      });
+      continue;
+    }
+
+    if (st === "about-eya") {
+      const headline = proposal.eyaAbout.headline;
+      const bodyParas = proposal.eyaAbout.body
+        .split(/\n\n+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      // First part is the headline; it should render only on the first packed page.
+      const chunks = packParagraphs([headline, ...bodyParas], MAX_CONTENT_PX);
+      chunks.forEach((packedParagraphs, i) => {
+        const showHeadline = i === 0 && packedParagraphs[0] === headline;
+        const paragraphs = showHeadline ? packedParagraphs.slice(1) : packedParagraphs;
+
+        const payload: SectionPagePayload = {
+          type: "about-eya",
+          headline,
+          paragraphs,
+          showHeadline,
+        };
+
         pages.push({
           key: key(),
           kind: "section",

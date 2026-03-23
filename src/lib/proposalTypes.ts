@@ -27,6 +27,7 @@ export interface ProposalSection {
 export type SectionType =
   | "cover"
   | "about"
+  | "about-eya"
   | "project-scope"
   | "deliverables"
   | "how-we-work"
@@ -42,6 +43,13 @@ export interface AboutSection {
   context: string;
   problem: string;
   approach: string;
+}
+
+export interface EyaAboutSection {
+  /** Big headline at the top of the page */
+  headline: string;
+  /** Body text shown below the headline */
+  body: string;
 }
 
 export interface DeliverablesSection {
@@ -153,6 +161,11 @@ export interface PricingOptionsSection {
   optionBTitle: string;
   summaryA: string;
   summaryB: string;
+  /**
+   * Whether option B is offered.
+   * When false, the proposal renders as a single investment option (option A only).
+   */
+  optionBEnabled: boolean;
   rows: PricingComparisonRow[];
   narrativeA: string;
   narrativeB: string;
@@ -183,6 +196,7 @@ export interface Proposal {
   theme: ProposalTheme;
   sections: ProposalSection[];
   about: AboutSection;
+  eyaAbout: EyaAboutSection;
   projectScope: ProjectScopeSection;
   deliverables: DeliverablesSection;
   howWeWork: HowWeWorkSection;
@@ -215,6 +229,7 @@ export type ProposalPageModel =
 
 export type SectionPagePayload =
   | { type: "about"; paragraphs: string[] }
+  | { type: "about-eya"; headline: string; paragraphs: string[]; showHeadline: boolean }
   | { type: "project-scope"; blocks: ScopeRenderBlock[] }
   | {
       type: "deliverables";

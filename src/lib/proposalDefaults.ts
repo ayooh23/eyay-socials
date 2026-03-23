@@ -26,6 +26,7 @@ export const PROPOSAL_SECTION_ORDER: SectionType[] = [
   "terms",
   "decisions",
   "next-steps",
+  "about-eya",
 ];
 
 export function newEntityId(): string {
@@ -73,7 +74,7 @@ function defaultMeta(): ProposalMeta {
 }
 
 function defaultSections(): ProposalSection[] {
-  const disabled: SectionType[] = ["terms", "investment", "deliverables"];
+  const disabled: SectionType[] = ["terms", "investment", "deliverables", "about-eya"];
   return PROPOSAL_SECTION_ORDER.map((type, i) => ({
     id: `${type}-${i}`,
     type,
@@ -251,6 +252,7 @@ function defaultPricingOptions() {
     optionBTitle: "Option B — Launch Partner",
     summaryA: "€3.000 one-time + €50/month",
     summaryB: "€5.000 one-time + €100/month",
+    optionBEnabled: true,
     rows: defaultPricingRows.map((r) => ({ ...r, id: newEntityId() })),
     narrativeA:
       "eyay delivers V1 as scoped. One feedback round included. You run your own pilots — we fix bugs that surface but we’re not facilitating or coordinating pilot sessions.\n\n• One-time V1 build: €3.000\n• Monthly: €50 (hosting, infrastructure, bug fixes)",
@@ -346,6 +348,11 @@ export function createDefaultProposal(): Proposal {
         "The risk isn’t only building V1 — it’s adoption. Without onboarding, pilots, and iteration, the product can sit unused.",
       approach:
         "We scope V1 honestly, offer a lean tier and a Launch Partner tier with a clear delta (branding, pilots, live onboarding, toolkit, retainer improvements), and keep IP/hosting responsibilities explicit.",
+    },
+    eyaAbout: {
+      headline: "your idea from this morning, built today.",
+      body:
+        "eyay studio is a two-person digital product studio based in Amsterdam. We design and build products that sit at the intersection of strategy, technology, and craft — from first brief to shipped product.\n\nWe work AI-native: research, design, and development all move faster because we use the right tools at every stage. What we don't automate is judgment — what to build, how it should feel, and whether it's actually ready.\n\nWe're end-to-end by design. The same people who frame the problem ship the product. No handoffs, no lost context, no PDFs thrown over a wall.\n\n23plusone Live is a project we believe in. The collective has built something that genuinely works — and we want to help take it further.\n\n[hello@eyay.studio](mailto:hello@eyay.studio) — [eyay.studio](http://eyay.studio) — Amsterdam, Netherlands",
     },
     projectScope: defaultProjectScope(),
     deliverables: {
@@ -524,6 +531,7 @@ export function mergeLoadedProposal(raw: unknown): Proposal {
     },
     sections: mergeSections(p.sections, d.sections),
     about: { ...d.about, ...p.about },
+    eyaAbout: { ...d.eyaAbout, ...p.eyaAbout },
     projectScope: ps,
     deliverables: {
       ...d.deliverables,
