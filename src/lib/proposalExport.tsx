@@ -11,6 +11,11 @@ import {
   PROPOSAL_THEMES,
 } from "@/lib/proposalThemes";
 
+/** html2canvas scale: below 2× cuts pixels sharply; 1.5 stays readable on A4 */
+const EXPORT_RASTER_SCALE = 1.5;
+/** JPEG quality 0–1 (canvas encode); much smaller than PNG for flat UI pages */
+const EXPORT_JPEG_QUALITY = 0.84;
+
 function waitFrames(n: number): Promise<void> {
   return new Promise((resolve) => {
     let c = 0;
@@ -32,7 +37,12 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
   const JsPDF = jspdfMod.default;
   const pages = buildProposalPages(proposal);
   const themeBg = PROPOSAL_THEMES[proposal.theme].bg;
-  const pdf = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pdf = new JsPDF({
+    unit: "mm",
+    format: "a4",
+    orientation: "portrait",
+    compress: true,
+  });
 
   const holder = document.createElement("div");
   holder.setAttribute("aria-hidden", "true");
@@ -82,7 +92,7 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
       await waitFrames(page.kind === "cover" ? 4 : 2);
 
       const canvas = await html2canvas(wrap, {
-        scale: 2,
+        scale: EXPORT_RASTER_SCALE,
         width: 794,
         height: 1123,
         useCORS: true,
@@ -113,9 +123,9 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
         },
       });
 
-      const img = canvas.toDataURL("image/png");
+      const img = canvas.toDataURL("image/jpeg", EXPORT_JPEG_QUALITY);
       if (i > 0) pdf.addPage();
-      pdf.addImage(img, "PNG", 0, 0, 210, 297);
+      pdf.addImage(img, "JPEG", 0, 0, 210, 297, undefined, "MEDIUM");
 
       root.unmount();
       holder.removeChild(wrap);
