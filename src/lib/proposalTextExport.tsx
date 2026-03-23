@@ -19,18 +19,66 @@ import {
   PROPOSAL_THEMES,
 } from "./proposalThemes";
 
-/**
- * NOTE: Built-in Helvetica / Helvetica-Bold are used by default.
- *
- * Font.register() can be added here later for DM Sans / DM Mono, e.g.
- * Font.register({
- *   family: "DMSans",
- *   fonts: [{ src: "/fonts/DMSans-Regular.ttf" }, ...],
- * })
- * This block is intentionally kept as a placeholder for future work.
- */
+const A4_WIDTH_PT = 595.28;
+const A4_HEIGHT_PT = 841.89;
+const PAGE_WIDTH_PX = 794;
+const MARGIN_PX = 60;
+const PX_TO_PT = A4_WIDTH_PT / PAGE_WIDTH_PX;
+const A4_PAGE_SIZE_PT: [number, number] = [A4_WIDTH_PT, A4_HEIGHT_PT];
+const FONT_SANS = "DMSans";
+const FONT_MONO = "DMMono";
 
-const PX_TO_PT = 0.75; // because the existing layout used 794x1123 px for A4 preview
+let fontsRegistered = false;
+
+function registerPdfFontsOnce(): void {
+  if (fontsRegistered) return;
+  fontsRegistered = true;
+
+  // Export-text PDF fonts: only DM Sans + DM Mono.
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-400-normal.woff",
+    fontWeight: 400,
+  });
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-300-normal.woff",
+    fontWeight: 300,
+  });
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-700-normal.woff",
+    fontWeight: 700,
+  });
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-300-italic.woff",
+    fontWeight: 300,
+    fontStyle: "italic",
+  });
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-400-italic.woff",
+    fontWeight: 400,
+    fontStyle: "italic",
+  });
+  Font.register({
+    family: FONT_SANS,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-700-italic.woff",
+    fontWeight: 700,
+    fontStyle: "italic",
+  });
+  Font.register({
+    family: FONT_MONO,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-mono@latest/latin-400-normal.woff",
+    fontWeight: 400,
+  });
+  Font.register({
+    family: FONT_MONO,
+    src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-mono@latest/latin-500-normal.woff",
+    fontWeight: 500,
+  });
+}
 
 function pt(px: number): number {
   return px * PX_TO_PT;
@@ -80,12 +128,26 @@ function downloadBlob(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** PDF cover only: light blue for meta / labels on eyay blue (replaces grey-white). */
+const PDF_COVER_DETAIL = "#b4d4ff";
+const PDF_COVER_FOOTER_DETAIL = "#9ec6ff";
+
+/** Under-title accent bar: white on blue/dark pages, neutral on light pages (avoids blue “stroke” on cream). */
+function sectionHeaderStripeColor(pageBg: string): string {
+  const bg = pageBg.trim().toLowerCase();
+  if (bg === "#0000ff") return "#ffffff";
+  const darkPageBgs = new Set(["#000000", "#0a0a0a", "#111111", "#111"]);
+  if (darkPageBgs.has(bg)) return "#ffffff";
+  /* Solid hex only — avoids viewer fringe when rgba grays sit on cream. */
+  return "#c4c4c4";
+}
+
 const layout = StyleSheet.create({
   page: {
-    paddingTop: pt(60),
+    paddingTop: pt(MARGIN_PX),
     paddingBottom: pt(48),
-    paddingLeft: pt(60),
-    paddingRight: pt(60),
+    paddingLeft: pt(MARGIN_PX),
+    paddingRight: pt(MARGIN_PX),
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
@@ -93,35 +155,19 @@ const layout = StyleSheet.create({
   coverPage: {
     display: "flex",
     flexDirection: "column",
-    paddingTop: pt(60),
-    paddingBottom: pt(60),
-    paddingLeft: pt(60),
-    paddingRight: pt(60),
-  },
-  coverRule: {
-    height: pt(2),
-    width: "100%",
-    marginTop: pt(12),
-  },
-  sectionRule: {
-    height: 1,
-    width: "100%",
-    marginTop: pt(8),
-    marginBottom: pt(18),
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
+    paddingTop: pt(MARGIN_PX),
+    paddingBottom: pt(MARGIN_PX),
+    paddingLeft: pt(MARGIN_PX),
+    paddingRight: pt(MARGIN_PX),
   },
   headerLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: pt(14),
-    letterSpacing: -0.1,
+    fontFamily: FONT_SANS,
+    fontSize: pt(22),
+    letterSpacing: -0.2,
     fontWeight: 700,
   },
   headerContinued: {
-    fontFamily: "Helvetica",
+    fontFamily: FONT_SANS,
     fontSize: pt(12),
     fontWeight: 400,
   },
@@ -130,21 +176,28 @@ const layout = StyleSheet.create({
     display: "flex",
     flexDirection: "column",
   },
+  pageNumber: {
+    position: "absolute",
+    right: pt(MARGIN_PX),
+    bottom: pt(MARGIN_PX),
+    fontFamily: FONT_MONO,
+    fontSize: pt(10),
+  },
   bodyText: {
-    fontFamily: "Helvetica",
+    fontFamily: FONT_SANS,
     fontSize: pt(13),
     fontWeight: 300,
     lineHeight: 1.7,
   },
   monoMuted: {
-    fontFamily: "Helvetica",
+    fontFamily: FONT_MONO,
     fontSize: pt(10),
     fontWeight: 400,
     letterSpacing: 0.1,
     textTransform: "uppercase" as const,
   },
   monoUpper: {
-    fontFamily: "Helvetica",
+    fontFamily: FONT_MONO,
     fontSize: pt(10),
     fontWeight: 400,
     letterSpacing: 0.1,
@@ -184,32 +237,6 @@ function MultilineText({
   );
 }
 
-function SectionHeader({
-  title,
-  continued,
-  textColor,
-  ruleColor,
-  mutedColor,
-}: {
-  title: string;
-  continued: boolean;
-  textColor: string;
-  ruleColor: string;
-  mutedColor: string;
-}) {
-  return (
-    <View>
-      <Text style={[layout.headerLabel, { color: textColor }]}>
-        {title}
-        {continued ? (
-          <Text style={[layout.headerContinued, { color: mutedColor }]}>{" "}(continued)</Text>
-        ) : null}
-      </Text>
-      <View style={[layout.sectionRule, { backgroundColor: ruleColor }]} />
-    </View>
-  );
-}
-
 function PricingOptionsBody({
   payload,
   scheme,
@@ -219,6 +246,9 @@ function PricingOptionsBody({
 }) {
   const d = payload.data;
   const hasB = !!d.optionBEnabled;
+  const whiteAccent = "#ffffff";
+  /** Solid white: semi-transparent white on #0000FF often reads as cyan/teal (“green”) in PDF viewers. */
+  const whiteStroke = "#ffffff";
 
   if (payload.slice === "compare") {
     return (
@@ -232,16 +262,16 @@ function PricingOptionsBody({
         {hasB ? (
           <View style={{ flexDirection: "row", marginBottom: pt(20), alignItems: "stretch" }}>
             <View style={{ flex: 1, paddingRight: pt(10) }}>
-              <Text style={[layout.monoMuted, { color: scheme.muted, marginBottom: pt(6) }]}>
+              <Text style={[layout.monoMuted, { color: scheme.accent, marginBottom: pt(6) }]}>
                 {d.optionATitle}
               </Text>
               <Text
                 style={{
-                  fontFamily: "Helvetica-Bold",
+                  fontFamily: FONT_SANS,
                   fontSize: pt(18),
                   fontWeight: 700,
                   letterSpacing: -0.2,
-                  color: scheme.accent,
+                  color: whiteAccent,
                 }}
               >
                 {d.summaryA}
@@ -251,22 +281,22 @@ function PricingOptionsBody({
             <View
               style={{
                 width: 1,
-                backgroundColor: scheme.border,
+                backgroundColor: whiteStroke,
                 alignSelf: "stretch",
               }}
             />
 
             <View style={{ flex: 1, paddingLeft: pt(10) }}>
-              <Text style={[layout.monoMuted, { color: scheme.muted, marginBottom: pt(6) }]}>
+              <Text style={[layout.monoMuted, { color: scheme.accent, marginBottom: pt(6) }]}>
                 {d.optionBTitle}
               </Text>
               <Text
                 style={{
-                  fontFamily: "Helvetica-Bold",
+                  fontFamily: FONT_SANS,
                   fontSize: pt(18),
                   fontWeight: 700,
                   letterSpacing: -0.2,
-                  color: scheme.accent,
+                  color: whiteAccent,
                 }}
               >
                 {d.summaryB}
@@ -275,16 +305,16 @@ function PricingOptionsBody({
           </View>
         ) : (
           <View style={{ marginBottom: pt(20) }}>
-            <Text style={[layout.monoMuted, { color: scheme.muted, marginBottom: pt(6) }]}>
+            <Text style={[layout.monoMuted, { color: scheme.accent, marginBottom: pt(6) }]}>
               {d.optionATitle}
             </Text>
             <Text
               style={{
-                fontFamily: "Helvetica-Bold",
+                fontFamily: FONT_SANS,
                 fontSize: pt(18),
                 fontWeight: 700,
                 letterSpacing: -0.2,
-                color: scheme.accent,
+                color: whiteAccent,
               }}
             >
               {d.summaryA}
@@ -293,14 +323,14 @@ function PricingOptionsBody({
         )}
 
         <View style={{ flexDirection: "column", flex: 1 }}>
-          <View style={{ flexDirection: "row", paddingBottom: pt(10), borderBottomWidth: 1, borderBottomColor: scheme.border }}>
+          <View style={{ flexDirection: "row", paddingBottom: pt(10), borderBottomWidth: 1, borderBottomColor: whiteStroke }}>
             <View style={{ width: pt(180) }} />
             <View style={hasB ? { width: pt(170), paddingLeft: pt(10) } : { flex: 1, paddingLeft: pt(10) }}>
-              <Text style={[layout.monoMuted, { color: scheme.muted }]}>{d.optionATitle.replace(/^Option [AB] — /i, "A — ")}</Text>
+              <Text style={[layout.monoMuted, { color: scheme.accent }]}>{d.optionATitle.replace(/^Option [AB] — /i, "A — ")}</Text>
             </View>
             {hasB ? (
-              <View style={{ width: pt(170), paddingLeft: pt(16), borderLeftWidth: 1, borderLeftColor: scheme.border }}>
-                <Text style={[layout.monoMuted, { color: scheme.muted }]}>{d.optionBTitle.replace(/^Option [AB] — /i, "B — ")}</Text>
+              <View style={{ width: pt(170), paddingLeft: pt(16), borderLeftWidth: 1, borderLeftColor: whiteStroke }}>
+                <Text style={[layout.monoMuted, { color: scheme.accent }]}>{d.optionBTitle.replace(/^Option [AB] — /i, "B — ")}</Text>
               </View>
             ) : null}
           </View>
@@ -313,20 +343,20 @@ function PricingOptionsBody({
                 paddingTop: pt(10),
                 paddingBottom: pt(10),
                 borderBottomWidth: 1,
-                borderBottomColor: scheme.border,
+                borderBottomColor: whiteStroke,
               }}
             >
               <View style={{ width: pt(180), paddingRight: pt(10) }}>
-                <Text style={[layout.monoUpper, { color: scheme.muted }]}>{row.label}</Text>
+                <Text style={[layout.monoUpper, { color: scheme.accent }]}>{row.label}</Text>
               </View>
               <View style={hasB ? { width: pt(170), paddingRight: pt(10) } : { flex: 1, paddingRight: pt(10) }}>
-                <Text style={{ fontFamily: "Helvetica", fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
+                <Text style={{ fontFamily: FONT_SANS, fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
                   {row.optionA}
                 </Text>
               </View>
               {hasB ? (
-                <View style={{ width: pt(170), paddingLeft: pt(16), borderLeftWidth: 1, borderLeftColor: scheme.border }}>
-                  <Text style={{ fontFamily: "Helvetica", fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
+                <View style={{ width: pt(170), paddingLeft: pt(16), borderLeftWidth: 1, borderLeftColor: whiteStroke }}>
+                  <Text style={{ fontFamily: FONT_SANS, fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
                     {row.optionB}
                   </Text>
                 </View>
@@ -341,29 +371,29 @@ function PricingOptionsBody({
   // slice === "detail"
   return (
     <View style={layout.sectionBody}>
-      <View style={{ marginBottom: pt(20), paddingBottom: pt(16), borderBottomWidth: 1, borderBottomColor: scheme.border }}>
-        <Text style={[layout.monoUpper, { color: scheme.accent, marginBottom: pt(8) }]}>{d.optionATitle}</Text>
+      <View style={{ marginBottom: pt(20), paddingBottom: pt(16), borderBottomWidth: 1, borderBottomColor: whiteStroke }}>
+        <Text style={[layout.monoUpper, { color: whiteAccent, marginBottom: pt(8) }]}>{d.optionATitle}</Text>
         <MultilineText text={d.narrativeA} style={{ ...layout.bodyText, color: scheme.text }} />
       </View>
 
       {hasB ? (
         <View style={{ marginBottom: pt(20) }}>
-          <Text style={[layout.monoUpper, { color: scheme.accent, marginBottom: pt(8) }]}>{d.optionBTitle}</Text>
+          <Text style={[layout.monoUpper, { color: whiteAccent, marginBottom: pt(8) }]}>{d.optionBTitle}</Text>
           <MultilineText text={d.narrativeB} style={{ ...layout.bodyText, color: scheme.text }} />
         </View>
       ) : null}
 
-      <Text style={[layout.monoMuted, { color: scheme.muted, marginBottom: pt(8) }]}>
+      <Text style={[layout.monoMuted, { color: scheme.accent, marginBottom: pt(8) }]}>
         {hasB ? "Both options include" : "Includes"}
       </Text>
       <MultilineText text={d.bothInclude} style={{ ...layout.bodyText, color: scheme.text, marginBottom: pt(16) }} />
 
-      <Text style={[layout.monoMuted, { color: scheme.muted, marginBottom: pt(8) }]}>
+      <Text style={[layout.monoMuted, { color: scheme.accent, marginBottom: pt(8) }]}>
         {hasB ? "Not included in either option" : "Not included"}
       </Text>
       <MultilineText text={d.notIncluded} style={{ ...layout.bodyText, color: scheme.text, marginBottom: pt(16) }} />
 
-      <Text style={[layout.monoUpper, { color: scheme.muted, marginTop: pt(12), lineHeight: 1.6 }]}>
+      <Text style={[layout.monoUpper, { color: scheme.accent, marginTop: pt(12), lineHeight: 1.6 }]}>
         Payment terms:{" "}
         {d.paymentTerms}
       </Text>
@@ -379,12 +409,13 @@ function InvestmentBody({
   scheme: { bg: string; text: string; muted: string; accent: string; border: string };
 }) {
   const rows = payload.items.filter((r) => r.included);
+  const tableStroke = "#ffffff";
 
   // fixed column widths (points) to keep the table stable
-  const descW = pt(220);
-  const rateW = pt(110);
+  const labelW = pt(110);
+  const descW = pt(200);
   const qtyW = pt(90);
-  const totalW = pt(140);
+  const priceW = pt(160);
 
   return (
     <View style={layout.sectionBody}>
@@ -394,25 +425,24 @@ function InvestmentBody({
             flexDirection: "row",
             paddingBottom: pt(10),
             borderBottomWidth: 1,
-            borderBottomColor: scheme.border,
+            borderBottomColor: tableStroke,
           }}
         >
-          <View style={{ width: descW }}>
-            <Text style={[layout.monoMuted, { color: scheme.muted }]}>Description</Text>
+          <View style={{ width: labelW }}>
+            <Text style={[layout.monoMuted, { color: scheme.accent }]}>Label</Text>
           </View>
-          <View style={{ width: rateW, alignItems: "flex-end" }}>
-            <Text style={[layout.monoMuted, { color: scheme.muted }]}>Rate</Text>
+          <View style={{ width: descW }}>
+            <Text style={[layout.monoMuted, { color: scheme.accent }]}>Description</Text>
           </View>
           <View style={{ width: qtyW, alignItems: "flex-end" }}>
-            <Text style={[layout.monoMuted, { color: scheme.muted }]}>Qty</Text>
+            <Text style={[layout.monoMuted, { color: scheme.accent }]}>Qty</Text>
           </View>
-          <View style={{ width: totalW, alignItems: "flex-end" }}>
-            <Text style={[layout.monoMuted, { color: scheme.muted }]}>Total</Text>
+          <View style={{ width: priceW, alignItems: "flex-end" }}>
+            <Text style={[layout.monoMuted, { color: scheme.accent }]}>Price</Text>
           </View>
         </View>
 
         {rows.map((r) => {
-          const total = r.price * r.quantity;
           return (
             <View
               key={r.id}
@@ -421,30 +451,27 @@ function InvestmentBody({
                 paddingTop: pt(12),
                 paddingBottom: pt(12),
                 borderBottomWidth: 1,
-                borderBottomColor: scheme.border,
+                borderBottomColor: tableStroke,
               }}
             >
-              <View style={{ width: descW, paddingRight: pt(10) }}>
-                <Text style={{ fontFamily: "Helvetica-Bold", fontSize: pt(13), fontWeight: 700, color: scheme.text }}>
+              <View style={{ width: labelW, paddingRight: pt(8) }}>
+                <Text style={{ fontFamily: FONT_SANS, fontSize: pt(13), fontWeight: 700, color: scheme.text }}>
                   {r.label}
                 </Text>
-                <Text style={{ fontFamily: "Helvetica", fontSize: pt(11), fontWeight: 300, color: scheme.muted, marginTop: pt(4), lineHeight: 1.6 }}>
+              </View>
+              <View style={{ width: descW, paddingRight: pt(8) }}>
+                <Text style={{ fontFamily: FONT_SANS, fontSize: pt(11), fontWeight: 300, color: scheme.accent, marginTop: pt(4), lineHeight: 1.6 }}>
                   {r.description}
                 </Text>
               </View>
-              <View style={{ width: rateW, alignItems: "flex-end", paddingRight: pt(10) }}>
-                <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), fontWeight: 400, color: scheme.text }}>
-                  {formatPriceCell(r.price, r.unit)}
-                </Text>
-              </View>
               <View style={{ width: qtyW, alignItems: "flex-end" }}>
-                <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), fontWeight: 400, color: scheme.text }}>
+                <Text style={{ fontFamily: FONT_SANS, fontSize: pt(12), fontWeight: 400, color: scheme.text }}>
                   {r.quantity}
                 </Text>
               </View>
-              <View style={{ width: totalW, alignItems: "flex-end" }}>
-                <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), fontWeight: 400, color: scheme.text }}>
-                  {formatEuro(total)}
+              <View style={{ width: priceW, alignItems: "flex-end" }}>
+                <Text style={{ fontFamily: FONT_SANS, fontSize: pt(12), fontWeight: 400, color: scheme.text }}>
+                  {formatPriceCell(r.price, r.unit)}
                 </Text>
               </View>
             </View>
@@ -452,8 +479,8 @@ function InvestmentBody({
         })}
       </View>
 
-      <Text style={[layout.monoMuted, { color: scheme.muted, marginTop: pt(12) }]}>{payload.vatNote}</Text>
-      <Text style={[layout.monoUpper, { color: scheme.muted, marginTop: pt(8), lineHeight: 1.6 }]}>
+      <Text style={[layout.monoMuted, { color: scheme.accent, marginTop: pt(12) }]}>{payload.vatNote}</Text>
+      <Text style={[layout.monoUpper, { color: scheme.accent, marginTop: pt(8), lineHeight: 1.6 }]}>
         Payment terms: {payload.paymentTerms}
       </Text>
     </View>
@@ -464,117 +491,107 @@ function TeamBody({
   payload,
   scheme,
   clientName,
-  proposalTheme,
 }: {
   payload: Extract<SectionPagePayload, { type: "team" }>;
   scheme: { bg: string; text: string; muted: string; accent: string; border: string };
   clientName: string;
-  proposalTheme: Proposal["theme"];
 }) {
-  function clientSectionLabelColor(theme: Proposal["theme"]): string {
-    if (theme === "dark") return "#5eead4";
-    if (theme === "light") return "#0f766e";
-    return "#115e59";
-  }
-
-  const TEAM_STUDIO_BG = "#0000FF";
+  /** Studio cards sit on eyay blue; client cards sit on the (usually light) page — use dark type on white. */
+  const TEAM_STUDIO_BG = PROPOSAL_PRICING_OPTIONS_THEME.bg;
   const TEAM_CLIENT_BG = "#ffffff";
+  const clientBorder = "rgba(0,0,0,0.12)";
+  const studioBorder = "#ffffff";
+
+  let shownStudio = false;
+  let shownClient = false;
 
   return (
     <View style={layout.sectionBody}>
-      {(() => {
-        let shownStudio = false;
-        let shownClient = false;
+      {payload.members.map((m) => {
+        const isClient = m.side === "client";
+        const showLabel =
+          (isClient && !shownClient) || (!isClient && !shownStudio);
 
-        return payload.members.map((m) => {
-          const isClient = m.side === "client";
-          const showLabel =
-            (isClient && !shownClient) || (!isClient && !shownStudio);
+        if (isClient) shownClient = true;
+        else shownStudio = true;
 
-          if (isClient) shownClient = true;
-          else shownStudio = true;
+        const nameColor = isClient ? "#0a0a0a" : "#ffffff";
+        const roleColor = isClient ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)";
+        const bioColor = isClient ? "#1a1a1a" : "rgba(255,255,255,0.92)";
 
-          const nameColor = isClient ? "#0a0a0a" : "#ffffff";
-          const roleColor = isClient ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)";
-          const bioColor = isClient ? "#1a1a1a" : "rgba(255,255,255,0.92)";
+        return (
+          <View key={m.id} style={{ marginBottom: pt(20) }}>
+            {showLabel ? (
+              <Text
+                style={[
+                  layout.monoUpper,
+                  {
+                    color: isClient ? scheme.text : scheme.accent,
+                    marginBottom: pt(10),
+                  },
+                ]}
+              >
+                {isClient ? `${clientName.trim() || "Client"} team` : "eyay studio"}
+              </Text>
+            ) : null}
 
-          return (
-            <View key={m.id} style={{ marginBottom: pt(20) }}>
-              {showLabel ? (
-                <Text
-                  style={[
-                    layout.monoUpper,
-                    {
-                      color: isClient
-                        ? clientSectionLabelColor(proposalTheme)
-                        : scheme.muted,
-                      marginBottom: pt(10),
-                    },
-                  ]}
-                >
-                  {isClient ? `${clientName.trim() || "Client"} team` : "eyay studio"}
-                </Text>
-              ) : null}
-
-              <View
+            <View
+              style={{
+                padding: pt(16),
+                backgroundColor: isClient ? TEAM_CLIENT_BG : TEAM_STUDIO_BG,
+                borderWidth: 1,
+                borderColor: isClient ? clientBorder : studioBorder,
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View style={{ flex: 1, paddingRight: pt(8) }}>
+                  <Text style={{ fontFamily: FONT_SANS, fontSize: pt(15), fontWeight: 700, color: nameColor }}>
+                    {m.name}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: FONT_MONO,
+                      fontSize: pt(10),
+                      letterSpacing: 0.1,
+                      textTransform: "uppercase",
+                      color: roleColor,
+                      marginTop: pt(4),
+                    }}
+                  >
+                    {m.role}
+                  </Text>
+                </View>
+                {isClient ? (
+                  <Text
+                    style={{
+                      fontFamily: FONT_MONO,
+                      fontSize: pt(8),
+                      letterSpacing: 0.14,
+                      textTransform: "uppercase",
+                      color: scheme.accent,
+                      opacity: 0.95,
+                    }}
+                  >
+                    Client
+                  </Text>
+                ) : null}
+              </View>
+              <Text
                 style={{
-                  position: "relative",
-                  padding: pt(16),
-                  backgroundColor: isClient ? TEAM_CLIENT_BG : TEAM_STUDIO_BG,
-                  borderRadius: 4,
-                  borderWidth: 1,
-                  borderColor: isClient ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.28)",
+                  fontFamily: FONT_SANS,
+                  fontSize: pt(13),
+                  fontWeight: 300,
+                  lineHeight: 1.7,
+                  color: bioColor,
+                  marginTop: pt(12),
                 }}
               >
-                {isClient ? (
-                  <View style={{ position: "absolute", top: pt(12), right: pt(12) }}>
-                    <Text
-                      style={{
-                        fontFamily: "Helvetica",
-                        fontSize: pt(8),
-                        letterSpacing: 0.14,
-                        textTransform: "uppercase",
-                        color: "#0d9488",
-                        opacity: 0.9,
-                      }}
-                    >
-                      Client
-                    </Text>
-                  </View>
-                ) : null}
-
-                <Text style={{ fontFamily: "Helvetica-Bold", fontSize: pt(15), fontWeight: 600, color: nameColor }}>
-                  {m.name}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "Helvetica",
-                    fontSize: pt(10),
-                    letterSpacing: 0.1,
-                    textTransform: "uppercase",
-                    color: roleColor,
-                    marginTop: pt(4),
-                  }}
-                >
-                  {m.role}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "Helvetica",
-                    fontSize: pt(13),
-                    fontWeight: 300,
-                    lineHeight: 1.7,
-                    color: bioColor,
-                    marginTop: pt(12),
-                  }}
-                >
-                  {m.bio}
-                </Text>
-              </View>
+                {m.bio}
+              </Text>
             </View>
-          );
-        });
-      })()}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -584,7 +601,7 @@ function ScopeBlockBody({
   scheme,
 }: {
   block: Extract<SectionPagePayload, { type: "project-scope" }>["blocks"][number];
-  scheme: { text: string; muted: string; accent: string };
+  scheme: { text: string; accent: string };
 }) {
   const bodyTextStyle = {
     ...layout.bodyText,
@@ -596,7 +613,7 @@ function ScopeBlockBody({
       <View style={{ marginBottom: pt(22) }}>
         <Text
           style={{
-            fontFamily: "Helvetica-Bold",
+            fontFamily: FONT_SANS,
             fontSize: pt(16),
             fontWeight: 700,
             letterSpacing: -0.15,
@@ -615,7 +632,7 @@ function ScopeBlockBody({
       <View style={{ marginBottom: pt(22) }}>
         <Text
           style={{
-            fontFamily: "Helvetica-Bold",
+            fontFamily: FONT_SANS,
             fontSize: pt(16),
             fontWeight: 700,
             letterSpacing: -0.15,
@@ -641,7 +658,7 @@ function ScopeBlockBody({
     <View style={{ marginBottom: pt(22) }}>
       <Text
         style={{
-          fontFamily: "Helvetica-Bold",
+          fontFamily: FONT_SANS,
           fontSize: pt(16),
           fontWeight: 700,
           letterSpacing: -0.15,
@@ -658,7 +675,7 @@ function ScopeBlockBody({
           <View style={{ width: pt(20) }}>
             <Text
               style={{
-                fontFamily: "Helvetica",
+                fontFamily: FONT_MONO,
                 fontSize: pt(10),
                 letterSpacing: 0.08,
                 textTransform: "uppercase",
@@ -669,10 +686,10 @@ function ScopeBlockBody({
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: pt(14), fontWeight: 600, marginBottom: pt(4), color: scheme.text }}>
+            <Text style={{ fontFamily: FONT_SANS, fontSize: pt(14), fontWeight: 700, marginBottom: pt(4), color: scheme.text }}>
               {s.title}
             </Text>
-            <Text style={{ fontFamily: "Helvetica", fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
+            <Text style={{ fontFamily: FONT_SANS, fontSize: pt(13), fontWeight: 300, color: scheme.text }}>
               {s.detail}
             </Text>
           </View>
@@ -707,25 +724,27 @@ function GenericSectionBody({
   }
 
   if (payload.type === "about-eya") {
+    const aboutEyaTheme = PROPOSAL_PRICING_OPTIONS_THEME;
+    const aboutEyaBodyTextStyle = { ...layout.bodyText, color: aboutEyaTheme.text };
     return (
       <View style={layout.sectionBody}>
         {payload.showHeadline && payload.headline.trim() ? (
           <Text
             style={{
-              fontFamily: "Helvetica-Bold",
-              fontSize: pt(18),
+              fontFamily: FONT_SANS,
+              fontSize: pt(20),
               fontWeight: 700,
               letterSpacing: -0.2,
               lineHeight: 1.15,
               marginBottom: pt(16),
-              color: t.accent,
+              color: aboutEyaTheme.accent,
             }}
           >
             {stripMarkdownLinks(payload.headline)}
           </Text>
         ) : null}
         {payload.paragraphs.map((p, i) => (
-          <Text key={`${i}-${p.slice(0, 12)}`} style={[bodyTextStyle, { marginBottom: pt(14) }]}>
+          <Text key={`${i}-${p.slice(0, 12)}`} style={[aboutEyaBodyTextStyle, { marginBottom: pt(14) }]}>
             {stripMarkdownLinks(p)}
           </Text>
         ))}
@@ -741,7 +760,7 @@ function GenericSectionBody({
             // eslint-disable-next-line react/no-array-index-key
             key={`${i}-${b.kind}`}
             block={b}
-            scheme={{ text: t.text, muted: t.muted, accent: t.accent }}
+            scheme={{ text: t.text, accent: t.accent }}
           />
         ))}
       </View>
@@ -773,9 +792,9 @@ function GenericSectionBody({
             </Text>
             <Text
               style={{
-                fontFamily: "Helvetica-Bold",
+                fontFamily: FONT_SANS,
                 fontSize: pt(14),
-                fontWeight: 600,
+                fontWeight: 700,
                 marginBottom: pt(6),
                 color: t.text,
               }}
@@ -797,8 +816,8 @@ function GenericSectionBody({
         ) : null}
         {payload.phases.map((ph, i) => (
           <View key={ph.id} style={{ marginBottom: i < payload.phases.length - 1 ? pt(20) : 0 }}>
-            <Text style={[layout.monoUpper, { color: t.muted, marginBottom: pt(4) }]}>{ph.duration}</Text>
-            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: pt(14), fontWeight: 600, marginBottom: pt(6), color: t.text }}>
+            <Text style={[layout.monoUpper, { color: t.accent, marginBottom: pt(4) }]}>{ph.duration}</Text>
+            <Text style={{ fontFamily: FONT_SANS, fontSize: pt(14), fontWeight: 700, marginBottom: pt(6), color: t.text }}>
               {ph.name}
             </Text>
             <Text style={bodyTextStyle}>{ph.description}</Text>
@@ -828,11 +847,11 @@ function GenericSectionBody({
             {i + 1}. {s}
           </Text>
         ))}
-        <Text style={{ fontFamily: "Helvetica-Bold", fontSize: pt(15), fontWeight: 600, marginTop: pt(10), color: t.text }}>
+        <Text style={{ fontFamily: FONT_SANS, fontSize: pt(15), fontWeight: 700, marginTop: pt(10), color: t.text }}>
           {payload.cta}
         </Text>
         {payload.calLink ? (
-          <Text style={{ fontFamily: "Helvetica", fontSize: pt(10), color: t.accent, marginTop: pt(12) }}>
+          <Text style={{ fontFamily: FONT_MONO, fontSize: pt(10), color: t.accent, marginTop: pt(12) }}>
             {payload.calLink}
           </Text>
         ) : null}
@@ -848,7 +867,7 @@ function GenericSectionBody({
       <View style={layout.sectionBody}>
         <MultilineText
           text={payload.text || "—"}
-          style={{ ...layout.bodyText, fontSize: pt(12), color: termsT.muted }}
+          style={{ ...layout.bodyText, fontSize: pt(12), color: termsT.accent }}
         />
       </View>
     );
@@ -894,7 +913,7 @@ function RenderSectionBody({ proposal, page }: { proposal: Proposal; page: Extra
   }
 
   if (payload.type === "team") {
-    return <TeamBody payload={payload} scheme={scheme} clientName={proposal.meta.clientName} proposalTheme={proposal.theme} />;
+    return <TeamBody payload={payload} scheme={scheme} clientName={proposal.meta.clientName} />;
   }
 
   return (
@@ -905,19 +924,20 @@ function RenderSectionBody({ proposal, page }: { proposal: Proposal; page: Extra
 function CoverPage({ proposal }: { proposal: Proposal }) {
   const meta = proposal.meta;
   return (
-    <Page size="A4" style={[layout.coverPage, { backgroundColor: PROPOSAL_COVER_STYLES.bg }]} wrap={false}>
-      <View style={{ flexDirection: "row", justifyContent: "flex-start", alignItems: "baseline" }}>
-        <Text style={{ fontFamily: "Helvetica", fontSize: pt(10), color: PROPOSAL_COVER_STYLES.muted, letterSpacing: 1, textTransform: "uppercase" as any }}>
+    <Page size={A4_PAGE_SIZE_PT} style={[layout.coverPage, { backgroundColor: PROPOSAL_COVER_STYLES.bg }]}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+        <Text style={{ fontFamily: FONT_MONO, fontSize: pt(10), color: PDF_COVER_DETAIL, letterSpacing: 1, textTransform: "uppercase" as any }}>
           eyay.studio
         </Text>
+        <Text style={{ fontFamily: FONT_MONO, fontSize: pt(10), color: PDF_COVER_DETAIL, letterSpacing: 1, textTransform: "uppercase" as any }}>
+          {meta.proposalNumber || "—"}
+        </Text>
       </View>
-      <View style={[layout.coverRule, { backgroundColor: PROPOSAL_COVER_STYLES.rule }]} />
-
       <View style={{ height: pt(48) }} />
 
       <Text
         style={{
-          fontFamily: "Helvetica-Bold",
+          fontFamily: FONT_SANS,
           fontSize: pt(48),
           fontWeight: 700,
           letterSpacing: -0.2,
@@ -928,59 +948,65 @@ function CoverPage({ proposal }: { proposal: Proposal }) {
         {meta.projectName.trim() || "Project name"}
       </Text>
 
-      <View style={{ marginTop: pt(14) }}>
-        <View style={{ flexDirection: "row" }}>
-          <View style={{ flex: 1, paddingRight: pt(12) }}>
-            <Text style={{ fontFamily: "Helvetica", fontSize: pt(10), color: PROPOSAL_COVER_STYLES.muted, letterSpacing: 1, textTransform: "uppercase" as any }}>
-              Client
-            </Text>
-            <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), color: PROPOSAL_COVER_STYLES.text, marginTop: pt(6) }}>
-              {meta.clientName.trim() || "Client"}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: "Helvetica", fontSize: pt(10), color: PROPOSAL_COVER_STYLES.muted, letterSpacing: 1, textTransform: "uppercase" as any }}>
-              Date
-            </Text>
-            <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), color: PROPOSAL_COVER_STYLES.text, marginTop: pt(6) }}>
-              {fmtDate(meta.proposalDate)}
-            </Text>
-          </View>
-        </View>
+      <Text style={{ fontFamily: FONT_MONO, fontSize: pt(12), color: PDF_COVER_DETAIL, letterSpacing: 0.8, textTransform: "uppercase" as any, marginTop: pt(12) }}>
+        {meta.clientName.trim() || "Client"}
+      </Text>
 
-        <View style={{ marginTop: pt(14) }}>
-          <Text style={{ fontFamily: "Helvetica", fontSize: pt(10), color: PROPOSAL_COVER_STYLES.muted, letterSpacing: 1, textTransform: "uppercase" as any }}>
-            Status
-          </Text>
-          <Text style={{ fontFamily: "Helvetica", fontSize: pt(12), color: PROPOSAL_COVER_STYLES.text, marginTop: pt(6) }}>
-            {meta.proposalStatus || "—"}
-          </Text>
-        </View>
+      <View style={{ height: pt(48) }} />
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: pt(14), columnGap: pt(28) }}>
+        {[
+          ["Prepared by", meta.preparedBy || "eyay studio"],
+          ["Prepared for", meta.clientName.trim() || "Client"],
+          ["Date", fmtDate(meta.proposalDate)],
+          ["Status", meta.proposalStatus || "—"],
+          ["Valid until", fmtDate(meta.validUntil)],
+          ["Contact", meta.studioContact || "—"],
+        ].map(([label, value]) => (
+          <View key={label} style={{ width: "47%" }}>
+            <Text style={{ fontFamily: FONT_MONO, fontSize: pt(10), color: PDF_COVER_DETAIL, letterSpacing: 0.8, textTransform: "uppercase" as any, marginBottom: pt(4) }}>
+              {label}
+            </Text>
+            <Text style={{ fontFamily: FONT_SANS, fontSize: pt(12), color: PROPOSAL_COVER_STYLES.text, letterSpacing: 0.2 }}>
+              {value}
+            </Text>
+          </View>
+        ))}
       </View>
+
+      <View style={{ flex: 1 }} />
+      <Text style={{ fontFamily: FONT_MONO, fontSize: pt(10), color: PDF_COVER_FOOTER_DETAIL, letterSpacing: 0.5 }}>
+        {meta.studioEmail}
+        {"\n"}
+        {meta.studioAddress}
+      </Text>
     </Page>
   );
 }
 
 export async function exportProposalTextPDF(proposal: Proposal): Promise<void> {
   const pages = buildProposalPages(proposal);
-
-  // react-pdf Font.register() should be called once (at module init),
-  // but we keep it intentionally empty for now (Helvetica built-in).
-  // eslint-disable-next-line no-unused-vars
-  const _noop = Font;
+  registerPdfFontsOnce();
 
   const doc = (
     <Document>
-      {pages.map((p) => {
+      {pages.map((p, idx) => {
         if (p.kind === "cover") {
           return <CoverPage key={p.key} proposal={proposal} />;
         }
 
         const scheme = getPageScheme(proposal, p as any) as any;
+        const showProjectName =
+          p.kind === "section" && p.sectionType === "pricing-options";
+        const lowOpacityPageNum =
+          p.kind === "section" &&
+          (p.sectionType === "pricing-options" ||
+            p.sectionType === "investment" ||
+            p.sectionType === "terms");
         return (
           <Page
             key={p.key}
-            size="A4"
+            size={A4_PAGE_SIZE_PT}
             style={[
               layout.page,
               {
@@ -988,16 +1014,40 @@ export async function exportProposalTextPDF(proposal: Proposal): Promise<void> {
                 color: scheme.text,
               },
             ]}
-            wrap={false}
           >
-            <SectionHeader
-              title={p.title}
-              continued={p.continuation}
-              textColor={scheme.text}
-              mutedColor={scheme.muted}
-              ruleColor={scheme.border}
+            <Text style={[layout.headerLabel, { color: scheme.text }]}>
+              {p.title}
+              {p.continuation ? (
+                <Text style={[layout.headerContinued, { color: scheme.accent }]}>{" "}(cont.)</Text>
+              ) : null}
+            </Text>
+            {showProjectName ? (
+              <Text
+                style={{
+                  fontFamily: FONT_SANS,
+                  fontSize: pt(15),
+                  fontWeight: 400,
+                  letterSpacing: -0.1,
+                  marginTop: pt(8),
+                  color: scheme.accent,
+                }}
+              >
+                {proposal.meta.projectName.trim() || "Project name"}
+              </Text>
+            ) : null}
+            <View
+              style={{
+                width: pt(40),
+                height: pt(4),
+                backgroundColor: sectionHeaderStripeColor(scheme.bg),
+                marginTop: pt(8),
+                marginBottom: pt(20),
+              }}
             />
             <RenderSectionBody proposal={proposal} page={p as any} />
+            <Text style={[layout.pageNumber, { color: scheme.text, opacity: lowOpacityPageNum ? 0.35 : 0.3 }]}>
+              {idx + 1} / {pages.length}
+            </Text>
           </Page>
         );
       })}
@@ -1007,6 +1057,6 @@ export async function exportProposalTextPDF(proposal: Proposal): Promise<void> {
   const blob = await pdf(doc).toBlob();
 
   const num = proposal.meta.proposalNumber.replace(/[^\w.-]+/g, "-") || "draft";
-  downloadBlob(blob, `eyay-proposal-${num}.pdf`);
+  downloadBlob(blob, `eyay-proposal-${num}-text-a4.pdf`);
 }
 

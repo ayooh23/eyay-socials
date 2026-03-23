@@ -1,6 +1,6 @@
 "use client";
 
-export type MainTab = "carousel" | "proposals";
+export type MainTab = "carousel" | "proposals" | "docs";
 
 export function MainTabBar({
   value,
@@ -24,6 +24,13 @@ export function MainTabBar({
         onClick={() => onChange("proposals")}
       >
         Proposals
+      </button>
+      <button
+        type="button"
+        className={`pill ${value === "docs" ? "on" : ""}`}
+        onClick={() => onChange("docs")}
+      >
+        Docs
       </button>
     </div>
   );

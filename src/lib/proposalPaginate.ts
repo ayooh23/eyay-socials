@@ -200,6 +200,15 @@ function flattenProjectScope(ps: ProjectScopeSection): ScopeRenderBlock[] {
       items: ps.v1Items.map((x) => x.text).filter(Boolean),
     });
   }
+  const extraTitle = ps.extraTitle ?? "";
+  const extraDescription = ps.extraDescription ?? "";
+  if (ps.extraEnabled && (extraTitle.trim() || extraDescription.trim())) {
+    blocks.push({
+      kind: "product",
+      title: extraTitle.trim() || "Extra",
+      body: extraDescription.trim() || "—",
+    });
+  }
   if (ps.outTitle.trim() || ps.outItems.length) {
     blocks.push({
       kind: "bullets",
@@ -289,6 +298,42 @@ function packTermsPages(text: string, maxPx: number): string[] {
   }
   if (buf.length) pages.push(buf.join("\n\n"));
   return pages;
+}
+
+/** Plain text → page chunks using the same content budget as the Proposals “Terms” section (A4). */
+export function paginatePlainDocumentText(text: string): string[] {
+  return packTermsPages(text, MAX_CONTENT_PX);
+}
+
+/** Same packing as Proposals → About eyay (headline on first page only when it fits). */
+export function paginateAboutEyaSection(
+  headline: string,
+  body: string,
+): Array<{
+  showHeadline: boolean;
+  headline: string;
+  paragraphs: string[];
+  continuation: boolean;
+}> {
+  const h = headline.trim();
+  const bodyParas = body
+    .split(/\n\n+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const seeds = h ? [h, ...bodyParas] : bodyParas.length ? bodyParas : ["—"];
+  const chunks = packParagraphs(seeds, MAX_CONTENT_PX);
+  return chunks.map((packedParagraphs, i) => {
+    const showHeadline = Boolean(h) && i === 0 && packedParagraphs[0] === h;
+    const paragraphs = showHeadline
+      ? packedParagraphs.slice(1)
+      : packedParagraphs;
+    return {
+      showHeadline,
+      headline: h,
+      paragraphs,
+      continuation: i > 0,
+    };
+  });
 }
 
 /** Enabled sections in canonical PDF order (sidebar `order` is not used for pagination). */

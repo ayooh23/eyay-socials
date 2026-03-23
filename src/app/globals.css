@@ -382,6 +382,40 @@ main::-webkit-scrollbar-thumb {
   width: 100%;
 }
 
+/* Docs / A4: use full main width so preview scale can match horizontal space */
+.cwrap--docs {
+  align-self: stretch;
+  max-width: 100%;
+}
+
+.doc-preview-wrap {
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Docs markdown fills the content column (avoid shrink-wrapped blocks) */
+.doc-md-root p,
+.doc-md-root ul,
+.doc-md-root ol,
+.doc-md-root blockquote,
+.doc-md-root pre,
+.doc-md-root table {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.doc-md-root li {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cwrap--docs .xbar,
+.cwrap--docs .prog {
+  max-width: 100%;
+}
+
 /* Slide frame: clips the 1080×1350 down to preview size */
 .sf-outer {
   position: relative;

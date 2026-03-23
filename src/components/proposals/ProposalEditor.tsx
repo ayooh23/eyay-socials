@@ -1413,6 +1413,43 @@ function ProjectScopeFields({
         + V1 bullet
       </button>
 
+      <div className="sbl">extra section</div>
+      <div className="ctrl">
+        <label>optional block</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+            {s.extraEnabled ? "Shown between V1 and Out of scope" : "Hidden"}
+          </span>
+          <button
+            type="button"
+            className={`btn btn-sm ${s.extraEnabled ? "btn-g" : "btn-p"}`}
+            onClick={() => patch({ extraEnabled: !s.extraEnabled })}
+          >
+            {s.extraEnabled ? "Disable extra section" : "+ add extra section"}
+          </button>
+        </div>
+      </div>
+      {s.extraEnabled ? (
+        <>
+          <div className="ctrl">
+            <label>title</label>
+            <input
+              type="text"
+              value={s.extraTitle}
+              onChange={(e) => patch({ extraTitle: e.target.value })}
+            />
+          </div>
+          <div className="ctrl">
+            <label>description</label>
+            <textarea
+              rows={3}
+              value={s.extraDescription}
+              onChange={(e) => patch({ extraDescription: e.target.value })}
+            />
+          </div>
+        </>
+      ) : null}
+
       <div className="sbl">out of scope</div>
       <div className="ctrl">
         <label>title</label>

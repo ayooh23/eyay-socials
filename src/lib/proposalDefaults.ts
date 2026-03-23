@@ -232,6 +232,9 @@ function defaultProjectScope() {
         "Pilot readiness — facilitator script, checklist, and feedback capture (depth depends on tier).",
       ),
     ],
+    extraEnabled: false,
+    extraTitle: "",
+    extraDescription: "",
     outTitle: "Out of scope for V1",
     outItems: [
       bullet("Long-term analytics or cross-session trend dashboards"),

@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
+import { createElement } from "react";
 import ProposalRenderer from "@/components/proposals/ProposalRenderer";
 import { buildProposalPages } from "@/lib/proposalPaginate";
 import type { Proposal } from "@/lib/proposalTypes";
@@ -78,12 +79,12 @@ export async function exportProposalPDF(proposal: Proposal): Promise<void> {
       const root = createRoot(wrap);
       flushSync(() => {
         root.render(
-          <ProposalRenderer
-            proposal={proposal}
-            page={page}
-            pageIndex={i}
-            totalPages={pages.length}
-          />,
+          createElement(ProposalRenderer, {
+            proposal,
+            page,
+            pageIndex: i,
+            totalPages: pages.length,
+          }),
         );
       });
 

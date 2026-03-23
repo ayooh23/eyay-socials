@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import CarouselTab, { type CarouselHeaderApi } from "@/components/tabs/CarouselTab";
 import { MainTabBar, type MainTab } from "@/components/tabs/index";
 import ProposalsTab from "@/components/tabs/ProposalsTab";
+import DocsTab from "@/components/tabs/DocsTab";
 
 export default function CarouselEditor() {
   const [mainTab, setMainTab] = useState<MainTab>("carousel");
@@ -55,7 +56,11 @@ export default function CarouselEditor() {
           <div className="logo">
             <b>eyay</b>
             <em>·</em>
-            {mainTab === "carousel" ? "carousel generator" : "proposals"}
+            {mainTab === "carousel"
+              ? "carousel generator"
+              : mainTab === "proposals"
+                ? "proposals"
+                : "docs"}
           </div>
           <MainTabBar value={mainTab} onChange={setMainTab} />
         </div>
@@ -86,7 +91,7 @@ export default function CarouselEditor() {
               + slide
             </button>
           </div>
-        ) : (
+        ) : mainTab === "proposals" || mainTab === "docs" ? (
           <div className="header-r">
             <span
               style={{
@@ -99,7 +104,7 @@ export default function CarouselEditor() {
               A4 · 794 × 1123
             </span>
           </div>
-        )}
+        ) : null}
       </header>
 
       {mainTab === "carousel" ? (
@@ -109,8 +114,14 @@ export default function CarouselEditor() {
           onToast={onToast}
           progressFooter={progressFooter}
         />
-      ) : (
+      ) : mainTab === "proposals" ? (
         <ProposalsTab
+          onProgress={onProgress}
+          onToast={onToast}
+          progressFooter={progressFooter}
+        />
+      ) : (
+        <DocsTab
           onProgress={onProgress}
           onToast={onToast}
           progressFooter={progressFooter}

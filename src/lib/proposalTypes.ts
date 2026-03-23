@@ -141,6 +141,9 @@ export interface ProjectScopeSection {
   v1Title: string;
   v1Intro: string;
   v1Items: ScopeBulletItem[];
+  extraEnabled: boolean;
+  extraTitle: string;
+  extraDescription: string;
   outTitle: string;
   outItems: ScopeBulletItem[];
   engagementTitle: string;
