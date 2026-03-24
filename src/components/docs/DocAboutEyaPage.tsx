@@ -1,7 +1,6 @@
 "use client";
 
 import DocMarkdownWeb from "@/components/docs/DocMarkdownWeb";
-import { DOC_ABOUT_EYA_TITLE } from "@/lib/docPages";
 import {
   DOC_TEXT_PAD_BOTTOM,
   DOC_TEXT_PAD_TOP,
@@ -52,35 +51,6 @@ export default function DocAboutEyaPage({
         flexDirection: "column",
       }}
     >
-      <h2
-        style={{
-          width: "100%",
-          fontFamily: sans,
-          fontSize: 22,
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          margin: 0,
-          lineHeight: 1.15,
-          color: pt.text,
-        }}
-      >
-        {DOC_ABOUT_EYA_TITLE}
-        {continuation ? (
-          <span style={{ color: pt.muted, fontWeight: 400, fontSize: 14 }}>
-            {" "}
-            (cont.)
-          </span>
-        ) : null}
-      </h2>
-      <div
-        style={{
-          width: 40,
-          height: 4,
-          background: pt.accent,
-          marginTop: 8,
-        }}
-      />
-      <div style={{ height: 24 }} />
       <div
         style={{
           flex: 1,

@@ -12,16 +12,12 @@ const W = 794;
 const H = 1123;
 
 export interface DocBodyPageProps {
-  sectionTitle: string;
-  continuation: boolean;
   body: string;
   pageIndex: number;
   totalPages: number;
 }
 
 export default function DocBodyPage({
-  sectionTitle,
-  continuation,
   body,
   pageIndex,
   totalPages,
@@ -49,35 +45,6 @@ export default function DocBodyPage({
         flexDirection: "column",
       }}
     >
-      <h2
-        style={{
-          width: "100%",
-          fontFamily: sans,
-          fontSize: 22,
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          margin: 0,
-          lineHeight: 1.15,
-          color: pt.text,
-        }}
-      >
-        {sectionTitle.trim() || "Document"}
-        {continuation ? (
-          <span style={{ color: pt.muted, fontWeight: 400, fontSize: 14 }}>
-            {" "}
-            (cont.)
-          </span>
-        ) : null}
-      </h2>
-      <div
-        style={{
-          width: 40,
-          height: 4,
-          background: pt.accent,
-          marginTop: 8,
-        }}
-      />
-      <div style={{ height: 24 }} />
       <div
         style={{
           flex: 1,

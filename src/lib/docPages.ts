@@ -1,7 +1,7 @@
 import { DEFAULT_DOC_EYAY_ABOUT } from "./docDefaults";
 import {
   paginateAboutEyaSection,
-  paginatePlainDocumentText,
+  paginatePlainDocumentTextWithMaxPx,
   SECTION_TITLES,
 } from "./proposalPaginate";
 
@@ -35,14 +35,23 @@ export type DocPage =
     };
 
 export const DOC_ABOUT_EYA_TITLE = SECTION_TITLES["about-eya"];
+const DOC_BODY_CONTENT_MAX_PX = 1380;
+const DOC_ABOUT_CONTENT_MAX_PX = 1380;
 
 export function buildDocPages(
   cover: DocCoverModel,
   sourceText: string,
   eyayAbout: { headline: string; body: string } = DEFAULT_DOC_EYAY_ABOUT,
 ): DocPage[] {
-  const bodyChunks = paginatePlainDocumentText(sourceText);
-  const aboutChunks = paginateAboutEyaSection(eyayAbout.headline, eyayAbout.body);
+  const bodyChunks = paginatePlainDocumentTextWithMaxPx(
+    sourceText,
+    DOC_BODY_CONTENT_MAX_PX,
+  );
+  const aboutChunks = paginateAboutEyaSection(
+    eyayAbout.headline,
+    eyayAbout.body,
+    DOC_ABOUT_CONTENT_MAX_PX,
+  );
 
   const pages: DocPage[] = [];
   let k = 0;

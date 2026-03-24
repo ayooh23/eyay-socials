@@ -24,8 +24,17 @@ export default function DocsTab({
   onToast,
   progressFooter,
 }: DocsTabProps) {
+  const defaultDocNumber = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `DOC-${y}-${m}${day}`;
+  }, []);
+
   const [docTitle, setDocTitle] = useState("");
   const [clientLine, setClientLine] = useState("");
+  const [docNumber, setDocNumber] = useState(defaultDocNumber);
   const [docType, setDocType] = useState<string>(
     DEFAULT_DOC_STUDIO_COVER.defaultDocType,
   );
@@ -34,14 +43,6 @@ export default function DocsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const coverDateIso = useMemo(() => isoDate(new Date()), []);
-
-  const docNumber = useMemo(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `DOC-${y}-${m}${day}`;
-  }, []);
 
   const cover: DocCoverModel = useMemo(
     () => ({
@@ -155,6 +156,17 @@ export default function DocsTab({
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
               placeholder="e.g. Brief, Memo, Spec"
+              spellCheck={false}
+            />
+          </div>
+          <div className="ctrl">
+            <label htmlFor="doc-number">document number (cover)</label>
+            <input
+              id="doc-number"
+              type="text"
+              value={docNumber}
+              onChange={(e) => setDocNumber(e.target.value)}
+              placeholder="DOC-2026-0324"
               spellCheck={false}
             />
           </div>

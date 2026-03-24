@@ -305,10 +305,19 @@ export function paginatePlainDocumentText(text: string): string[] {
   return packTermsPages(text, MAX_CONTENT_PX);
 }
 
+/** Plain text → page chunks with a custom content-height budget. */
+export function paginatePlainDocumentTextWithMaxPx(
+  text: string,
+  maxPx: number,
+): string[] {
+  return packTermsPages(text, maxPx);
+}
+
 /** Same packing as Proposals → About eyay (headline on first page only when it fits). */
 export function paginateAboutEyaSection(
   headline: string,
   body: string,
+  maxPx: number = MAX_CONTENT_PX,
 ): Array<{
   showHeadline: boolean;
   headline: string;
@@ -321,7 +330,7 @@ export function paginateAboutEyaSection(
     .map((t) => t.trim())
     .filter(Boolean);
   const seeds = h ? [h, ...bodyParas] : bodyParas.length ? bodyParas : ["—"];
-  const chunks = packParagraphs(seeds, MAX_CONTENT_PX);
+  const chunks = packParagraphs(seeds, maxPx);
   return chunks.map((packedParagraphs, i) => {
     const showHeadline = Boolean(h) && i === 0 && packedParagraphs[0] === h;
     const paragraphs = showHeadline

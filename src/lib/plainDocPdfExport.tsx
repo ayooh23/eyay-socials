@@ -392,29 +392,6 @@ export async function exportDocPdf(
                 },
               ]}
             >
-              <Text style={[layout.headerLabel, { color: light.text }]}>
-                {p.sectionTitle.trim() || "Document"}
-                {p.continuation ? (
-                  <Text
-                    style={[
-                      layout.headerContinued,
-                      { color: light.muted },
-                    ]}
-                  >
-                    {" "}
-                    (cont.)
-                  </Text>
-                ) : null}
-              </Text>
-              <View
-                style={{
-                  width: pt(40),
-                  height: pt(4),
-                  backgroundColor: sectionHeaderStripeColor(light.bg),
-                  marginTop: pt(8),
-                  marginBottom: pt(20),
-                }}
-              />
               <View style={layout.sectionBody}>
                 {renderDocMarkdownPdf(lexDocMarkdown(p.body), lightMdCtx)}
               </View>
@@ -451,29 +428,6 @@ export async function exportDocPdf(
               },
             ]}
           >
-            <Text style={[layout.headerLabel, { color: aboutScheme.text }]}>
-              {DOC_ABOUT_EYA_TITLE}
-              {p.continuation ? (
-                <Text
-                  style={[
-                    layout.headerContinued,
-                    { color: aboutScheme.accent },
-                  ]}
-                >
-                  {" "}
-                  (cont.)
-                </Text>
-              ) : null}
-            </Text>
-            <View
-              style={{
-                width: pt(40),
-                height: pt(4),
-                backgroundColor: sectionHeaderStripeColor(aboutScheme.bg),
-                marginTop: pt(8),
-                marginBottom: pt(20),
-              }}
-            />
             <View style={layout.sectionBody}>
               {p.showHeadline && p.headline.trim() ? (
                 <View style={{ marginBottom: pt(16) }}>

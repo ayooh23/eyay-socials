@@ -74,8 +74,6 @@ export default function DocsCanvas({ pages }: DocsCanvasProps) {
             ) : null}
             {page.kind === "body" ? (
               <DocBodyPage
-                sectionTitle={page.sectionTitle}
-                continuation={page.continuation}
                 body={page.body}
                 pageIndex={i}
                 totalPages={totalPages}
