@@ -867,7 +867,7 @@ function GenericSectionBody({
       <View style={layout.sectionBody}>
         <MultilineText
           text={payload.text || "—"}
-          style={{ ...layout.bodyText, fontSize: pt(12), color: termsT.accent }}
+          style={{ ...layout.bodyText, fontSize: pt(12), color: termsT.text }}
         />
       </View>
     );
