@@ -199,10 +199,10 @@ export default function SlideRenderer({
         className="s-body"
         style={{
           textAlign: "left",
+          justifyContent: "flex-end",
           paddingBottom: 0,
         }}
       >
-        <div style={{ marginTop: "auto" }}>
         {slide.eyebrow ? (
           <div
             className="s-eyebrow"
@@ -249,7 +249,6 @@ export default function SlideRenderer({
               </div>
             );
           })}
-        </div>
         </div>
       </div>
     );

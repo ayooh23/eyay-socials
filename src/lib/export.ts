@@ -2,7 +2,7 @@
 
 import { createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import DeckSlideRenderer from "@/components/DeckSlideRenderer";
 import SlideRenderer from "@/components/SlideRenderer";
 import {
@@ -257,17 +257,10 @@ async function captureOffscreen(
 
   await sleep(settleMs);
 
-  const canvas = await html2canvas(inner, {
-    scale: 1,
+  const canvas = await toCanvas(inner, {
     width: w,
     height: h,
-    useCORS: true,
-    backgroundColor: null,
-    logging: false,
-    x: 0,
-    y: 0,
-    scrollX: 0,
-    scrollY: 0,
+    pixelRatio: 1,
   });
 
   root.unmount();
@@ -628,18 +621,7 @@ export async function xSlideVideo(
     const totalMs = Math.max(2400, animEndMs + holdMs);
     const totalFrames = Math.ceil((totalMs / 1000) * EXPORT_FPS);
 
-    const h2cOpts = {
-      scale: 1,
-      width: w,
-      height: h,
-      useCORS: true,
-      backgroundColor: null as string | null,
-      logging: false,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
-    };
+    const capOpts = { width: w, height: h, pixelRatio: 1 };
 
     // Phase 1 — Pre-render all frames into an ImageBitmap buffer
     const bitmaps: ImageBitmap[] = [];
@@ -649,7 +631,7 @@ export async function xSlideVideo(
       void inner.offsetHeight;
       await doubleRaf();
 
-      const canvas = await html2canvas(inner, h2cOpts);
+      const canvas = await toCanvas(inner, capOpts);
       const bm = await createImageBitmap(canvas);
       bitmaps.push(bm);
       onProgress(
