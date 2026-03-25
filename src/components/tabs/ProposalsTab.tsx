@@ -1,23 +1,28 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import type { MutableRefObject, ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ProposalCanvas from "@/components/proposals/ProposalCanvas";
 import ProposalEditor from "@/components/proposals/ProposalEditor";
-import ProposalExport from "@/components/proposals/ProposalExport";
+import {
+  runProposalTextPdfExport,
+  type ProposalProgressFn,
+  type ProposalToastFn,
+} from "@/components/proposals/ProposalExport";
 import { useProposal } from "@/hooks/useProposal";
-import type { ProposalProgressFn, ProposalToastFn } from "@/components/proposals/ProposalExport";
 
 export interface ProposalsTabProps {
   onProgress: ProposalProgressFn;
   onToast: ProposalToastFn;
   progressFooter: ReactNode;
+  pdfExportRef: MutableRefObject<(() => void) | null>;
 }
 
 export default function ProposalsTab({
   onProgress,
   onToast,
   progressFooter,
+  pdfExportRef,
 }: ProposalsTabProps) {
   const {
     hydrated,
@@ -42,6 +47,22 @@ export default function ProposalsTab({
   const handleScrollHandled = useCallback(() => {
     setScrollToPageIndex(null);
   }, []);
+
+  const runExport = useCallback(() => {
+    if (!activeProposal) return;
+    void runProposalTextPdfExport(activeProposal, onProgress, onToast);
+  }, [activeProposal, onProgress, onToast]);
+
+  useEffect(() => {
+    if (!hydrated || !activeProposal) {
+      pdfExportRef.current = null;
+      return;
+    }
+    pdfExportRef.current = runExport;
+    return () => {
+      pdfExportRef.current = null;
+    };
+  }, [hydrated, activeProposal, pdfExportRef, runExport]);
 
   if (!hydrated || !activeProposal) {
     return (
@@ -82,11 +103,6 @@ export default function ProposalsTab({
             pages={pages}
             scrollToPageIndex={scrollToPageIndex}
             onScrollHandled={handleScrollHandled}
-          />
-          <ProposalExport
-            proposal={activeProposal}
-            onProgress={onProgress}
-            onToast={onToast}
           />
 
           {progressFooter}

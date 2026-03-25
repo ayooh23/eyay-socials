@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
 import DocsCanvas from "@/components/docs/DocsCanvas";
 import {
   DEFAULT_DOC_STUDIO_COVER,
@@ -17,12 +25,14 @@ export interface DocsTabProps {
   onProgress: ProposalProgressFn;
   onToast: ProposalToastFn;
   progressFooter: ReactNode;
+  pdfExportRef: MutableRefObject<(() => void) | null>;
 }
 
 export default function DocsTab({
   onProgress,
   onToast,
   progressFooter,
+  pdfExportRef,
 }: DocsTabProps) {
   const defaultDocNumber = useMemo(() => {
     const d = new Date();
@@ -81,7 +91,7 @@ export default function DocsTab({
     reader.readAsText(f, "UTF-8");
   }, [onToast]);
 
-  const runExport = async () => {
+  const runExport = useCallback(async () => {
     onProgress("building PDF…", 5);
     try {
       await exportDocPdf(pages, docTitle);
@@ -92,7 +102,16 @@ export default function DocsTab({
       onToast("Export failed");
       console.error(err);
     }
-  };
+  }, [docTitle, onProgress, onToast, pages]);
+
+  useEffect(() => {
+    pdfExportRef.current = () => {
+      void runExport();
+    };
+    return () => {
+      pdfExportRef.current = null;
+    };
+  }, [pdfExportRef, runExport]);
 
   return (
     <>
@@ -198,12 +217,6 @@ export default function DocsTab({
       <main>
         <div className="cwrap cwrap--docs">
           <DocsCanvas pages={pages} />
-          <div className="xbar">
-            <span className="xlabel">export</span>
-            <button type="button" className="btn btn-g btn-sm" onClick={runExport}>
-              Export PDF (A4)
-            </button>
-          </div>
           {progressFooter}
         </div>
       </main>

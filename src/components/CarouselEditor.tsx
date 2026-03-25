@@ -9,6 +9,7 @@ import DocsTab from "@/components/tabs/DocsTab";
 export default function CarouselEditor() {
   const [mainTab, setMainTab] = useState<MainTab>("carousel");
   const carouselHeaderApi = useRef<CarouselHeaderApi | null>(null);
+  const pdfExportRef = useRef<(() => void) | null>(null);
 
   const [progShow, setProgShow] = useState(false);
   const [progLabel, setProgLabel] = useState("rendering…");
@@ -103,6 +104,13 @@ export default function CarouselEditor() {
             >
               A4 · 794 × 1123
             </span>
+            <button
+              type="button"
+              className="btn btn-g btn-sm"
+              onClick={() => pdfExportRef.current?.()}
+            >
+              Export PDF
+            </button>
           </div>
         ) : null}
       </header>
@@ -119,12 +127,14 @@ export default function CarouselEditor() {
           onProgress={onProgress}
           onToast={onToast}
           progressFooter={progressFooter}
+          pdfExportRef={pdfExportRef}
         />
       ) : (
         <DocsTab
           onProgress={onProgress}
           onToast={onToast}
           progressFooter={progressFooter}
+          pdfExportRef={pdfExportRef}
         />
       )}
 
