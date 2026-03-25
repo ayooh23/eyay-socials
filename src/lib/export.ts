@@ -214,11 +214,10 @@ function pickVideoRecorderFormat(): {
   ext: "mp4" | "webm";
 } {
   const mp4Candidates = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4;codecs=avc1.42E01E",
-    "video/mp4;codecs=avc1.42001E,mp4a.40.2",
-    "video/mp4;codecs=avc1.4D401E",
+    "video/mp4;codecs=avc1.640033",
     "video/mp4;codecs=avc1.640028",
+    "video/mp4;codecs=avc1.4D0033",
+    "video/mp4;codecs=avc1.4D0028",
     "video/mp4",
   ];
   for (const mimeType of mp4Candidates) {
@@ -676,7 +675,8 @@ export async function xSlideVideo(
         error: (e) => { throw e; },
       });
       encoder.configure({
-        codec: "avc1.42001f",
+        // High @ L5.1 — higher than L4.0 for large frames / future resolutions; avoids AVC level errors.
+        codec: "avc1.640033",
         width: w,
         height: h,
         bitrate: 18_000_000,

@@ -17,6 +17,8 @@ import { buildDocPages, type DocCoverModel } from "@/lib/docPages";
 import { exportDocPdf } from "@/lib/plainDocPdfExport";
 import type { ProposalProgressFn, ProposalToastFn } from "@/components/proposals/ProposalExport";
 
+const STORAGE_KEY = "eyay-docs-state";
+
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -50,9 +52,56 @@ export default function DocsTab({
   );
   const [sourceText, setSourceText] = useState("");
   const [loadedName, setLoadedName] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const coverDateIso = useMemo(() => isoDate(new Date()), []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as Record<string, unknown>;
+        if (typeof p.docTitle === "string") setDocTitle(p.docTitle);
+        if (typeof p.clientLine === "string") setClientLine(p.clientLine);
+        if (typeof p.docNumber === "string") setDocNumber(p.docNumber);
+        if (typeof p.docType === "string") setDocType(p.docType);
+        if (typeof p.sourceText === "string") setSourceText(p.sourceText);
+        if (p.loadedName === null || typeof p.loadedName === "string") {
+          setLoadedName(p.loadedName);
+        }
+      }
+    } catch {
+      /* ignore corrupt storage */
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          docTitle,
+          clientLine,
+          docNumber,
+          docType,
+          sourceText,
+          loadedName,
+        }),
+      );
+    }, 500);
+    return () => clearTimeout(t);
+  }, [
+    clientLine,
+    docNumber,
+    docTitle,
+    docType,
+    hydrated,
+    loadedName,
+    sourceText,
+  ]);
 
   const cover: DocCoverModel = useMemo(
     () => ({
