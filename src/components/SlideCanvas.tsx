@@ -9,6 +9,8 @@ export interface SlideCanvasProps {
   globalStyle: GlobalStyle;
   slideIndex: number;
   totalSlides: number;
+  /** When false, chat/stagger/typewriter stay static (e.g. embedded preview). */
+  animate?: boolean;
 }
 
 export default function SlideCanvas({
@@ -16,9 +18,10 @@ export default function SlideCanvas({
   globalStyle,
   slideIndex,
   totalSlides,
+  animate = true,
 }: SlideCanvasProps) {
   const chatEnabled = slide.layout === "chat";
-  const chatRef = useChatAnimation(slide, chatEnabled);
+  const chatRef = useChatAnimation(slide, chatEnabled && animate);
 
   return (
     <div className="sf-outer">
@@ -29,6 +32,7 @@ export default function SlideCanvas({
           slideIndex={slideIndex}
           totalSlides={totalSlides}
           staticChat={false}
+          animate={animate}
           chatContainerRef={chatEnabled ? chatRef : undefined}
         />
       </div>

@@ -214,10 +214,17 @@ main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px
 .s-chat{display:flex;flex-direction:column;gap:18px;}
 .s-brow{display:flex;}
 .s-brow.out{justify-content:flex-end;}
+.s-bwrap{display:flex;flex-direction:column;max-width:68%;min-width:0;}
+.s-brow.in .s-bwrap{align-items:flex-start;text-align:left;}
+.s-brow.out .s-bwrap{align-items:flex-end;text-align:right;}
+.s-bname{font-family:var(--mono);font-size:16px;letter-spacing:.06em;margin-bottom:6px;opacity:.48;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .s-bubble{
-  max-width:68%;padding:20px 26px;border-radius:34px;
+  box-sizing:border-box;width:max-content;max-width:100%;
+  padding:20px 26px;border-radius:34px;
   font-family:var(--sans);font-size:28px;line-height:1.4;font-weight:400;
+  white-space:nowrap;
 }
+.s-bubble.s-bubble-wrap{white-space:normal;word-break:break-word;}
 .s-bubble.in{border-bottom-left-radius:8px;}
 .s-bubble.out{border-bottom-right-radius:8px;}
 .s-bmeta{font-family:var(--mono);font-size:18px;margin-top:5px;opacity:.28;}
@@ -336,16 +343,31 @@ main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px
 
     <!-- CHAT -->
     <div id="fw-chat" class="hidden">
-      <div class="ctrl"><label>msg 1 — incoming</label><input type="text" id="fm1" placeholder="Ey ay" oninput="sync()"/></div>
-      <div class="ctrl"><label>msg 2 — outgoing</label><input type="text" id="fm2" placeholder="What if we built…" oninput="sync()"/></div>
-      <div class="ctrl"><label>msg 3 — incoming (opt)</label><input type="text" id="fm3" placeholder="…something that just works" oninput="sync()"/></div>
       <div class="ctrl">
-        <label>sender names</label>
-        <div style="display:flex;gap:5px">
-          <input type="text" id="fsn1" placeholder="Sinyo" oninput="sync()" style="flex:1"/>
-          <input type="text" id="fsn2" placeholder="Ayu"   oninput="sync()" style="flex:1"/>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <label style="margin-bottom:0;flex:1">messages</label>
+          <button type="button" class="btn btn-p btn-sm" onclick="addChatRow()">+ add</button>
         </div>
+        <div id="chat-rows-host"></div>
       </div>
+      <div id="chat-classic-fields">
+        <div class="ctrl"><label>msg 1 — incoming</label><input type="text" id="fm1" placeholder="Ey ay" oninput="sync()"/></div>
+        <div class="ctrl"><label>msg 2 — outgoing</label><input type="text" id="fm2" placeholder="What if we built…" oninput="sync()"/></div>
+        <div class="ctrl"><label>msg 3 — lead-in (Sinyo, before variant)</label><input type="text" id="fm3lead" placeholder="Yeah — I'm thinking…" oninput="sync()"/></div>
+        <div class="ctrl">
+          <label>msg 3 — active variant</label>
+          <div class="pills" id="m3-pills">
+            <button type="button" class="pill on" data-v="0" onclick="setM3Pick(this,0)">A</button>
+            <button type="button" class="pill"    data-v="1" onclick="setM3Pick(this,1)">B</button>
+            <button type="button" class="pill"    data-v="2" onclick="setM3Pick(this,2)">C</button>
+          </div>
+        </div>
+        <div class="ctrl"><label>msg 3 — line A</label><input type="text" id="fm3" placeholder="…something that just works" oninput="sync()"/></div>
+        <div class="ctrl"><label>msg 3 — line B</label><input type="text" id="fm3b" placeholder="Alternate line…" oninput="sync()"/></div>
+        <div class="ctrl"><label>msg 3 — line C</label><input type="text" id="fm3c" placeholder="Another option…" oninput="sync()"/></div>
+      </div>
+      <div class="ctrl"><label>name above incoming bubbles (msg 1, lead-in, variant)</label><input type="text" id="fsn1" placeholder="Sinyo" oninput="sync()"/></div>
+      <div class="ctrl"><label>name above outgoing bubble (msg 2)</label><input type="text" id="fsn2" placeholder="Ayu" oninput="sync()"/></div>
       <div class="ctrl">
         <label>animation speed</label>
         <div class="pills" id="sp-pills">
@@ -437,7 +459,7 @@ main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px
   <div class="sb">
     <div class="sbl">transition video</div>
     <div style="font-size:10px;color:var(--text3);line-height:1.7;margin-bottom:10px;font-family:var(--mono)">
-      Renders current slide fading between two themes. 3 sec · 1080×1350 · 30fps.
+      Renders current slide fading between two themes. 12 sec · 1080×1350 · 30fps · 1200ms fade.
     </div>
     <button class="btn btn-g btn-w btn-sm" onclick="xTransition('dark','light')" style="margin-bottom:5px">↓ dark → light</button>
     <button class="btn btn-g btn-w btn-sm" onclick="xTransition('light','dark')">↓ light → dark</button>
@@ -467,6 +489,7 @@ main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px
       <button class="btn btn-g btn-sm" onclick="xPNG()">↓ PNG</button>
       <button class="btn btn-g btn-sm" onclick="xAllPNG()">↓ all PNG</button>
       <button class="btn btn-g btn-sm" onclick="xGIF()">↓ GIF</button>
+      <button class="btn btn-g btn-sm" onclick="xSlideVideo()">↓ slide video</button>
       <button class="btn btn-p btn-sm" onclick="xVideo()">↓ video</button>
     </div>
 
@@ -497,13 +520,103 @@ let slides=[], cur=0;
 let G={theme:'dark', size:88, align:'left', showTag:true, showNum:true};
 const SPEEDS={normal:{f:500,g:800},fast:{f:280,g:430},slow:{f:850,g:1300}};
 let animIds=[];
+const CHAT_WRAP_CHARS=38;
+
+function resolvedM3(s){
+  const o=[s.m3||'',s.m3b||'',s.m3c||''];
+  const p=typeof s.m3Pick==='number'?s.m3Pick:0;
+  const c=o[p];
+  if(c&&c.trim())return c;
+  for(let i=0;i<o.length;i++) if(o[i]&&o[i].trim()) return o[i];
+  return '';
+}
+function chatBubbleWrap(txt){
+  return txt.indexOf('\n')>=0||txt.length>CHAT_WRAP_CHARS;
+}
+function escHtml(t){
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(t){
+  return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+}
+function formatChatTime(i){
+  var m=1+i*3, sec=(23+i*17)%60;
+  return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;
+}
+function getChatBubbles(s){
+  var snIn=(s.sn1||'Sinyo').trim()||'Sinyo';
+  var snOut=(s.sn2||'Ayu').trim()||'Ayu';
+  var rows=(s.chatRows||[]).filter(function(r){return r.text.trim();});
+  if(rows.length){
+    return rows.map(function(r,i){
+      return {key:r.id,txt:r.text,d:r.role,nm:r.role==='out'?snOut:snIn,time:formatChatTime(i)};
+    });
+  }
+  var m3t=resolvedM3(s);
+  var legacy=[];
+  if(s.m1) legacy.push({key:'l1',txt:s.m1,d:'in',nm:snIn,time:formatChatTime(0)});
+  if(s.m2) legacy.push({key:'l2',txt:s.m2,d:'out',nm:snOut,time:formatChatTime(1)});
+  var lead=(s.m3Lead||'').trim();
+  if(lead) legacy.push({key:'l3',txt:lead,d:'in',nm:snIn,time:formatChatTime(2)});
+  if(m3t) legacy.push({key:'l4',txt:m3t,d:'in',nm:snIn,time:formatChatTime(3)});
+  return legacy;
+}
+function refreshChatRowEditors(){
+  var s=slides[cur];
+  var host=document.getElementById('chat-rows-host');
+  var classic=document.getElementById('chat-classic-fields');
+  if(!host||!classic) return;
+  if(s.layout!=='chat'){
+    host.innerHTML='';
+    classic.style.display='none';
+    return;
+  }
+  var rows=s.chatRows||[];
+  classic.style.display=rows.length?'none':'block';
+  host.innerHTML=rows.map(function(r,i){
+    return '<div class="ctrl" style="margin-bottom:8px">'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">'+
+      '<span class="rv">'+(i+1)+'</span>'+
+      '<div class="pills">'+
+      '<button type="button" class="pill '+(r.role==='in'?'on':'')+'" onclick="setRowRole(\''+r.id+'\',\'in\')">in</button>'+
+      '<button type="button" class="pill '+(r.role==='out'?'on':'')+'" onclick="setRowRole(\''+r.id+'\',\'out\')">out</button>'+
+      '</div>'+
+      '<button type="button" class="btn btn-g btn-sm" onclick="delChatRow(\''+r.id+'\')">× delete</button>'+
+      '</div>'+
+      '<input type="text" id="crt_'+r.id+'" value="'+escAttr(r.text)+'" placeholder="Message…" oninput="sync()"/>'+
+      '</div>';
+  }).join('');
+}
+function addChatRow(){
+  var s=slides[cur];
+  if(s.layout!=='chat') return;
+  sync();
+  if(!s.chatRows) s.chatRows=[];
+  s.chatRows.push({id:'cr'+Date.now()+Math.random().toString(36).slice(2,8),role:'in',text:''});
+  loadFields(); draw(); renderList();
+}
+function delChatRow(id){
+  sync();
+  var s=slides[cur];
+  s.chatRows=(s.chatRows||[]).filter(function(r){return r.id!==id;});
+  loadFields(); draw(); renderList();
+}
+function setRowRole(id,role){
+  sync();
+  var s=slides[cur];
+  s.chatRows=(s.chatRows||[]).map(function(r){
+    if(r.id!==id) return r;
+    return {id:r.id,role:role,text:r.text};
+  });
+  loadFields(); draw(); renderList();
+}
 
 function mk(o={}){
   return {
     id:Date.now()+Math.random(),
     layout:'headline',
     eyebrow:'',headline:'',body:'',
-    m1:'',m2:'',m3:'',sn1:'Sinyo',sn2:'Ayu',
+    m1:'',m2:'',m3:'',m3Lead:'',m3b:'',m3c:'',m3Pick:0,chatRows:[],sn1:'Sinyo',sn2:'Ayu',
     chatSpeed:'normal',
     s1n:'',s1l:'',s2n:'',s2l:'',
     l1:'',l2:'',l3:'',l4:'',
@@ -516,7 +629,13 @@ function mk(o={}){
 function init(){
   slides=[
     mk({layout:'headline', eyebrow:'eyay · amsterdam', headline:'Your idea\nfrom this morning,\nbuilt today.', cta:'eyay.studio'}),
-    mk({layout:'chat',     eyebrow:'this is how it starts', m1:'Ey ay', m2:'What if we built…', m3:'…something that just works', cta:'eyay.studio'}),
+    mk({layout:'chat',     eyebrow:'this is how it starts', m1:'Ey ay', m2:'What if we built…', m3Lead:"Yeah — I'm thinking…", m3:'…something that just works', m3b:'…ship it this week', m3c:'…no busywork', m3Pick:0,
+      chatRows:[
+        {id:'cr1',role:'in',text:'Ey ay'},
+        {id:'cr2',role:'out',text:'What if we built…'},
+        {id:'cr3',role:'in',text:"Yeah — I'm thinking…"},
+        {id:'cr4',role:'in',text:'…something that just works'}
+      ], cta:'eyay.studio'}),
     mk({layout:'stat',     eyebrow:'the numbers', headline:'Two people.\nTen-person output.', s1n:'2×',s1l:'faster iteration',s2n:'10×',s2l:'output', cta:'eyay.studio'}),
     mk({layout:'list',     eyebrow:'how we work', headline:'AI-native,\nend-to-end.', l1:'AI runs through every stage',l2:'No handoffs — you brief us, we build',l3:'Clean code, easy to maintain', cta:'eyay.studio'}),
     mk({layout:'terminal', eyebrow:'loading…', term:'where ideas get built today', cta:'eyay.studio'}),
@@ -549,12 +668,20 @@ function loadFields(){
   document.querySelectorAll('#lp .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===s.layout));
   showLF(s.layout);
   sv('fe',s.eyebrow); sv('fh',s.headline); sv('fb',s.body);
-  sv('fm1',s.m1); sv('fm2',s.m2); sv('fm3',s.m3);
+  if(typeof s.m3Pick!=='number') s.m3Pick=0;
+  if(s.m3b===undefined) s.m3b='';
+  if(s.m3c===undefined) s.m3c='';
+  if(s.m3Lead===undefined) s.m3Lead='';
+  if(!s.chatRows) s.chatRows=[];
+  sv('fm1',s.m1); sv('fm2',s.m2); sv('fm3lead',s.m3Lead); sv('fm3',s.m3);
+  sv('fm3b',s.m3b); sv('fm3c',s.m3c);
   sv('fsn1',s.sn1||'Sinyo'); sv('fsn2',s.sn2||'Ayu');
+  document.querySelectorAll('#m3-pills .pill').forEach(p=>p.classList.toggle('on',Number(p.dataset.v)===s.m3Pick));
   sv('fs1n',s.s1n); sv('fs1l',s.s1l); sv('fs2n',s.s2n); sv('fs2l',s.s2l);
   sv('fl1',s.l1); sv('fl2',s.l2); sv('fl3',s.l3); sv('fl4',s.l4);
   sv('ft',s.term); sv('fc',s.cta);
   document.querySelectorAll('#sp-pills .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===(s.chatSpeed||'normal')));
+  refreshChatRowEditors();
 }
 function sv(id,val){const e=document.getElementById(id);if(e)e.value=val||'';}
 
@@ -572,7 +699,15 @@ function showLF(lay){
 function sync(){
   const s=slides[cur];
   s.eyebrow=gv('fe'); s.headline=gv('fh'); s.body=gv('fb');
-  s.m1=gv('fm1'); s.m2=gv('fm2'); s.m3=gv('fm3');
+  if(s.layout==='chat' && s.chatRows && s.chatRows.length){
+    s.chatRows=s.chatRows.map(function(r){
+      var el=document.getElementById('crt_'+r.id);
+      return {id:r.id,role:r.role,text:el?el.value:r.text};
+    });
+  }
+  s.m1=gv('fm1'); s.m2=gv('fm2'); s.m3Lead=gv('fm3lead'); s.m3=gv('fm3');
+  s.m3b=gv('fm3b'); s.m3c=gv('fm3c');
+  if(typeof s.m3Pick!=='number') s.m3Pick=0;
   s.sn1=gv('fsn1')||'Sinyo'; s.sn2=gv('fsn2')||'Ayu';
   s.s1n=gv('fs1n'); s.s1l=gv('fs1l'); s.s2n=gv('fs2n'); s.s2l=gv('fs2l');
   s.l1=gv('fl1'); s.l2=gv('fl2'); s.l3=gv('fl3'); s.l4=gv('fl4');
@@ -605,21 +740,22 @@ function draw(sData, tKey, into){
     </div>`;
 
   }else if(s.layout==='chat'){
-    const bubs=[
-      s.m1?{txt:s.m1,d:'in', nm:s.sn1||'Sinyo',time:'01:23'}:null,
-      s.m2?{txt:s.m2,d:'out',nm:s.sn2||'Ayu',  time:'06:46'}:null,
-      s.m3?{txt:s.m3,d:'in', nm:s.sn1||'Sinyo',time:'11:18'}:null,
-    ].filter(Boolean);
+    const bubs=getChatBubbles(s);
     body=`<div class="s-body" style="text-align:left;justify-content:flex-end;padding-bottom:0">
       ${s.eyebrow?`<div class="s-eyebrow" style="color:${t.muted};margin-bottom:14px">${s.eyebrow}</div>`:''}
       <div class="s-chat">
-        ${bubs.map((b,i)=>`
+        ${bubs.map((b,i)=>{
+          const w=chatBubbleWrap(b.txt);
+          const inner=w?escHtml(b.txt).replace(/\n/g,'<br>'):escHtml(b.txt);
+          return `
           <div class="s-brow ${b.d==='out'?'out':''}" data-bi="${i}" style="opacity:0;transform:translateY(18px) scale(0.96)">
-            <div>
-              <div class="s-bubble ${b.d}" style="background:${b.d==='in'?t.bIn:t.bOut};color:${b.d==='in'?t.bInT:t.bOutT}">${b.txt}</div>
+            <div class="s-bwrap">
+              <div class="s-bname" style="color:${t.muted}">${escHtml(b.nm)}</div>
+              <div class="s-bubble ${b.d}${w?' s-bubble-wrap':''}" style="background:${b.d==='in'?t.bIn:t.bOut};color:${b.d==='in'?t.bInT:t.bOutT}">${inner}</div>
               <div class="s-bmeta" style="color:${t.muted}">${b.time}</div>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
 
@@ -721,6 +857,11 @@ function setChatSpeed(el,v){
   document.querySelectorAll('#sp-pills .pill').forEach(p=>p.classList.toggle('on',p===el));
   animChat(slides[cur]);
 }
+function setM3Pick(el,v){
+  slides[cur].m3Pick=v;
+  document.querySelectorAll('#m3-pills .pill').forEach(p=>p.classList.toggle('on',Number(p.dataset.v)===v));
+  draw(); renderList();
+}
 
 /* ── SLIDE MANAGEMENT ────────────────────────────────────────── */
 function addSlide(){ const s=mk({layout:'headline',headline:'New slide',cta:'eyay.studio'}); slides.splice(cur+1,0,s); cur++; renderList(); loadFields(); draw(); }
@@ -762,7 +903,7 @@ async function capture(slideData, tKey, idx){
   document.body.appendChild(w);
 
   draw(slideData, tKey, w.firstElementChild);
-  await sleep(90);
+  await sleep(slideData.layout==='chat'?175:90);
 
   const c=await html2canvas(w.firstElementChild,{
     scale:1, width:1080, height:1350,
@@ -814,6 +955,16 @@ async function xGIF(){
   }catch(e){toast('GIF failed: '+e.message);document.getElementById('prog').classList.remove('show');}
 }
 
+async function xSlideVideo(){
+  try{
+    prog('rendering…',30);
+    const c=await capture(slides[cur],G.theme,cur);
+    const n='eyay-slide-'+String(cur+1).padStart(2,'0')+'.webm';
+    await encodeSlides([c],2.4,0.32,n);
+    toast('Slide video saved — 1080×1350 .webm');
+  }catch(e){toast('Slide video failed: '+e.message);document.getElementById('prog').classList.remove('show');}
+}
+
 async function xVideo(){
   try{
     const cs=[];
@@ -839,10 +990,7 @@ async function xTransition(fromT,toT){
     const oc=document.createElement('canvas');
     oc.width=1080; oc.height=1350;
     const ctx=oc.getContext('2d');
-    const FPS=30, DUR=3.0, HOLD=0.65, FADE=1.7;
-    const totalF=Math.ceil(DUR*FPS);
-    const holdF =Math.ceil(HOLD*FPS);
-    const fadeF =Math.ceil(FADE*FPS);
+    const FPS=30, DUR=12.0, FADE=1.2, HOLD=(DUR-FADE)/2;
 
     const chunks=[];
     const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
@@ -851,26 +999,49 @@ async function xTransition(fromT,toT){
 
     prog('encoding…',48);
     await new Promise(resolve=>{
-      rec.onstop=resolve; rec.start();
-      let f=0;
-      function tick(){
+      rec.onstop=resolve;
+      // timeslice helps ensure encoders build correct duration metadata
+      // instead of sometimes producing truncated durations.
+      rec.start(250);
+
+      let stopped=false;
+      const start=performance.now();
+      const stopAt=start + DUR*1000;
+      let intervalId=undefined;
+      const stop=()=>{ if(stopped) return; stopped=true; if(intervalId!==undefined) clearInterval(intervalId); rec.stop(); };
+
+      function easeInOutSin(t){
+        // t in [0,1] -> smooth ease-in/out in [0,1]
+        return 0.5 - 0.5*Math.cos(Math.PI*t);
+      }
+
+      const frameMs=Math.round(1000/FPS);
+      function render(){
+        if(stopped) return;
+        const tSec=(performance.now()-start)/1000;
+
         ctx.clearRect(0,0,1080,1350);
-        if(f<holdF){
-          ctx.globalAlpha=1; ctx.drawImage(cA,0,0,1080,1350);
-        }else{
-          const tf=f-holdF;
-          const tRaw=Math.min(tf/fadeF,1);
-          // ease in-out quad
-          const te=tRaw<.5?2*tRaw*tRaw:-1+(4-2*tRaw)*tRaw;
-          ctx.globalAlpha=1; ctx.drawImage(cA,0,0,1080,1350);
-          ctx.globalAlpha=te; ctx.drawImage(cB,0,0,1080,1350);
+        // Always draw A first, then overlay B with eased alpha during the fade window.
+        ctx.globalAlpha=1; ctx.drawImage(cA,0,0,1080,1350);
+
+        if(tSec>=HOLD){
+          const tf=tSec-HOLD;
+          const tRaw=Math.min(tf/FADE,1);
+          const alphaB=easeInOutSin(tRaw);
+          ctx.globalAlpha=alphaB; ctx.drawImage(cB,0,0,1080,1350);
           ctx.globalAlpha=1;
         }
-        prog('encoding…',48+Math.round((f/totalF)*48));
-        f++;
-        if(f<totalF) requestAnimationFrame(tick); else rec.stop();
+
+        const tRatio=Math.min(Math.max(tSec/DUR,0),1);
+        prog('encoding…',48+Math.round(tRatio*48));
+
+        if(performance.now()>=stopAt) stop();
       }
-      requestAnimationFrame(tick);
+
+      render();
+      intervalId=setInterval(render,frameMs);
+      // Safety stop in case interval is throttled.
+      setTimeout(stop, Math.ceil(DUR*1000)+300);
     });
 
     const blob=new Blob(chunks,{type:'video/webm'});
@@ -893,7 +1064,7 @@ async function encodeSlides(cs,slideDur,fadeDur,fname){
   const rec=new MediaRecorder(oc.captureStream(FPS),{mimeType:mime,videoBitsPerSecond:12000000});
   rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
   await new Promise(resolve=>{
-    rec.onstop=resolve; rec.start();
+    rec.onstop=resolve; rec.start(250);
     let f=0;
     function tick(){
       const si=Math.min(Math.floor(f/sf),cs.length-1);
@@ -916,7 +1087,7 @@ async function encodeSlides(cs,slideDur,fadeDur,fname){
 
 /* ── UTILS ───────────────────────────────────────────────────── */
 function dl(c,n){const a=document.createElement('a');a.download=n;a.href=c.toDataURL('image/png');a.click();}
-function dlURL(u,n){const a=document.createElement('a');a.download=n;a.href=u;a.click();setTimeout(()=>URL.revokeObjectURL(u),8000);}
+function dlURL(u,n){const a=document.createElement('a');a.download=n;a.href=u;a.click();setTimeout(()=>URL.revokeObjectURL(u),20000);}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 

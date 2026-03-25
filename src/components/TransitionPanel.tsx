@@ -44,8 +44,8 @@ export default function TransitionPanel({
           fontFamily: "var(--mono)",
         }}
       >
-        Renders current slide fading between two themes. 3 sec · 1080×1350 ·
-        30fps · H.264 .mp4 when your browser supports it.
+        Renders current slide fading between two themes. 12 sec · 1080×1350 ·
+        30fps · 1200ms fade · H.264 .mp4 when your browser supports it.
       </div>
       <button
         type="button"

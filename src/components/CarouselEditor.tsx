@@ -3,12 +3,14 @@
 import { useCallback, useRef, useState } from "react";
 import CarouselTab, { type CarouselHeaderApi } from "@/components/tabs/CarouselTab";
 import { MainTabBar, type MainTab } from "@/components/tabs/index";
-import ProposalsTab from "@/components/tabs/ProposalsTab";
 import DocsTab from "@/components/tabs/DocsTab";
+import ProposalsTab from "@/components/tabs/ProposalsTab";
+import SlidesTab, { type SlidesHeaderApi } from "@/components/tabs/SlidesTab";
 
 export default function CarouselEditor() {
   const [mainTab, setMainTab] = useState<MainTab>("carousel");
   const carouselHeaderApi = useRef<CarouselHeaderApi | null>(null);
+  const slidesHeaderApi = useRef<SlidesHeaderApi | null>(null);
   const pdfExportRef = useRef<(() => void) | null>(null);
 
   const [progShow, setProgShow] = useState(false);
@@ -50,6 +52,15 @@ export default function CarouselEditor() {
     </div>
   );
 
+  const logoSubtitle =
+    mainTab === "carousel"
+      ? "carousel generator"
+      : mainTab === "slides"
+        ? "slides generator"
+        : mainTab === "proposals"
+          ? "proposals"
+          : "docs";
+
   return (
     <div className="eyay-root">
       <header>
@@ -57,11 +68,7 @@ export default function CarouselEditor() {
           <div className="logo">
             <b>eyay</b>
             <em>·</em>
-            {mainTab === "carousel"
-              ? "carousel generator"
-              : mainTab === "proposals"
-                ? "proposals"
-                : "docs"}
+            {logoSubtitle}
           </div>
           <MainTabBar value={mainTab} onChange={setMainTab} />
         </div>
@@ -92,6 +99,33 @@ export default function CarouselEditor() {
               + slide
             </button>
           </div>
+        ) : mainTab === "slides" ? (
+          <div className="header-r">
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 9,
+                color: "var(--text3)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              1920 × 1080
+            </span>
+            <button
+              type="button"
+              className="btn btn-g btn-sm"
+              onClick={() => slidesHeaderApi.current?.resetAll()}
+            >
+              ↺ reset
+            </button>
+            <button
+              type="button"
+              className="btn btn-p btn-sm"
+              onClick={() => slidesHeaderApi.current?.addSlide()}
+            >
+              + slide
+            </button>
+          </div>
         ) : mainTab === "proposals" || mainTab === "docs" ? (
           <div className="header-r">
             <span
@@ -118,6 +152,13 @@ export default function CarouselEditor() {
       {mainTab === "carousel" ? (
         <CarouselTab
           headerApiRef={carouselHeaderApi}
+          onProgress={onProgress}
+          onToast={onToast}
+          progressFooter={progressFooter}
+        />
+      ) : mainTab === "slides" ? (
+        <SlidesTab
+          headerApiRef={slidesHeaderApi}
           onProgress={onProgress}
           onToast={onToast}
           progressFooter={progressFooter}

@@ -1,19 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { Slide } from "@/lib/types";
+import type { SlideListItem } from "@/lib/types";
+import { layoutGlyphForList } from "@/lib/slideListGlyph";
 import { THEMES } from "@/lib/themes";
 
-function layoutGlyph(layout: Slide["layout"]) {
-  if (layout === "terminal") return "▶";
-  if (layout === "chat") return "💬";
-  if (layout === "stat") return "#";
-  if (layout === "list") return "≡";
-  return "H";
-}
-
 export interface SlideListProps {
-  slides: Slide[];
+  slides: SlideListItem[];
   cur: number;
   onSelect: (index: number) => void;
   onDelete: (index: number) => void;
@@ -38,53 +31,53 @@ export default function SlideList({
         {slides.map((s, i) => {
           const thumb = THEMES[s.theme ?? "dark"];
           return (
-          <div
-            key={s.id}
-            role="button"
-            tabIndex={0}
-            className={`sli ${i === cur ? "on" : ""} ${dragFrom === i ? "sli-dragging" : ""}`}
-            draggable
-            onDragStart={() => setDragFrom(i)}
-            onDragEnd={() => setDragFrom(null)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragFrom !== null) onReorder(dragFrom, i);
-              setDragFrom(null);
-            }}
-            onClick={() => onSelect(i)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect(i);
-              }
-            }}
-          >
-            <span className="sli-n">{String(i + 1).padStart(2, "0")}</span>
             <div
-              className="sli-m"
-              style={{ background: thumb.bg, color: thumb.text }}
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              className={`sli ${i === cur ? "on" : ""} ${dragFrom === i ? "sli-dragging" : ""}`}
+              draggable
+              onDragStart={() => setDragFrom(i)}
+              onDragEnd={() => setDragFrom(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragFrom !== null) onReorder(dragFrom, i);
+                setDragFrom(null);
+              }}
+              onClick={() => onSelect(i)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(i);
+                }
+              }}
             >
-              {layoutGlyph(s.layout)}
-            </div>
-            <span className="sli-t">
-              {s.headline.replace(/\n/g, " ") || s.layout}
-            </span>
-            {slides.length > 1 ? (
-              <button
-                type="button"
-                className="sli-d"
-                aria-label="Delete slide"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(i);
-                }}
+              <span className="sli-n">{String(i + 1).padStart(2, "0")}</span>
+              <div
+                className="sli-m"
+                style={{ background: thumb.bg, color: thumb.text }}
               >
-                ×
-              </button>
-            ) : null}
-          </div>
-        );
+                {layoutGlyphForList(s.layout)}
+              </div>
+              <span className="sli-t">
+                {s.headline.replace(/\n/g, " ") || s.layout}
+              </span>
+              {slides.length > 1 ? (
+                <button
+                  type="button"
+                  className="sli-d"
+                  aria-label="Delete slide"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(i);
+                  }}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          );
         })}
       </div>
       <button

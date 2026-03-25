@@ -2,51 +2,44 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import ExportBar from "@/components/ExportBar";
-import SidebarControls from "@/components/SidebarControls";
-import SlideCanvas from "@/components/SlideCanvas";
+import SlidesCanvas from "@/components/SlidesCanvas";
+import SlidesExportBar from "@/components/SlidesExportBar";
+import SlidesSidebarControls from "@/components/SlidesSidebarControls";
 import SlideList from "@/components/SlideList";
-import TransitionPanel from "@/components/TransitionPanel";
 import {
-  createSlide,
+  createSlidesSlide,
   DEFAULT_GLOBAL_STYLE,
-  DEFAULT_SLIDES,
+  DEFAULT_SLIDES_DECK,
   newSlideId,
 } from "@/data/defaults";
-import { migrateChatSlide } from "@/lib/chatSlide";
 import { useSlides } from "@/hooks/useSlides";
-import type {
-  Alignment,
-  GlobalStyle,
-  Slide,
-  ThemeKey,
-} from "@/lib/types";
+import type { Alignment, GlobalStyle, SlidesSlide, ThemeKey } from "@/lib/types";
 import type { ProgressFn, ToastFn } from "@/lib/export";
 
-const STORAGE_KEY = "eyay-socials-state";
+const STORAGE_KEY = "eyay-slides-state";
 
-export type CarouselHeaderApi = {
+export type SlidesHeaderApi = {
   resetAll: () => void;
   addSlide: () => void;
 };
 
-export interface CarouselTabProps {
+export interface SlidesTabProps {
   onProgress: ProgressFn;
   onToast: ToastFn;
-  headerApiRef: RefObject<CarouselHeaderApi | null>;
+  headerApiRef: RefObject<SlidesHeaderApi | null>;
   progressFooter: ReactNode;
 }
 
-export default function CarouselTab({
+export default function SlidesTab({
   onProgress,
   onToast,
   headerApiRef,
   progressFooter,
-}: CarouselTabProps) {
-  const createBlankCarouselSlide = useCallback(
+}: SlidesTabProps) {
+  const createBlankDeckSlide = useCallback(
     () =>
-      createSlide({
-        layout: "headline",
+      createSlidesSlide({
+        layout: "title",
         headline: "New slide",
         cta: "eyay.studio",
       }),
@@ -54,17 +47,17 @@ export default function CarouselTab({
   );
 
   const {
-    slides,
-    cur,
+    slides: slidesS,
+    cur: curS,
     selectSlide,
     addSlide,
     deleteSlide,
     reorderSlides,
     resetSlides,
     patchSlideById,
-  } = useSlides(DEFAULT_SLIDES, 0, createBlankCarouselSlide);
+  } = useSlides(DEFAULT_SLIDES_DECK, 0, createBlankDeckSlide);
 
-  const [globalStyle, setGlobalStyle] = useState<GlobalStyle>(
+  const [globalStyleS, setGlobalStyleS] = useState<GlobalStyle>(
     DEFAULT_GLOBAL_STYLE,
   );
 
@@ -88,24 +81,16 @@ export default function CarouselTab({
           const gs = p.globalStyle ?? {};
           const legacyTheme = gs.theme;
           const legacyAlign = gs.align;
-          const normalized = (p.slides as Partial<Slide>[]).map((row) => {
+          const normalized = (p.slides as Partial<SlidesSlide>[]).map((row) => {
             const s = row ?? {};
             const id =
               typeof s.id === "string" && s.id.length > 0 ? s.id : newSlideId();
-            const raw = s as Record<string, unknown>;
-            const hadChatRowsKey = Object.prototype.hasOwnProperty.call(
-              raw,
-              "chatRows",
-            );
-            const slide = createSlide({
+            return createSlidesSlide({
               ...s,
               id,
               theme: s.theme ?? legacyTheme ?? "dark",
               align: s.align ?? legacyAlign ?? "left",
             });
-            return slide.layout === "chat" && !hadChatRowsKey
-              ? migrateChatSlide(slide)
-              : slide;
           });
           const seen = new Set<string>();
           const withUniqueIds = normalized.map((s) => {
@@ -118,7 +103,7 @@ export default function CarouselTab({
             return s;
           });
           resetSlides(withUniqueIds, clamped);
-          setGlobalStyle({
+          setGlobalStyleS({
             ...DEFAULT_GLOBAL_STYLE,
             size: gs.size ?? DEFAULT_GLOBAL_STYLE.size,
             showTag: gs.showTag ?? DEFAULT_GLOBAL_STYLE.showTag,
@@ -137,21 +122,25 @@ export default function CarouselTab({
     const t = setTimeout(() => {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ slides, cur, globalStyle }),
+        JSON.stringify({
+          slides: slidesS,
+          cur: curS,
+          globalStyle: globalStyleS,
+        }),
       );
     }, 500);
     return () => clearTimeout(t);
-  }, [slides, cur, globalStyle, hydrated]);
+  }, [slidesS, curS, globalStyleS, hydrated]);
 
-  const current = slides[cur];
+  const current = slidesS[curS];
 
   const goPrev = useCallback(() => {
-    if (cur > 0) selectSlide(cur - 1);
-  }, [cur, selectSlide]);
+    if (curS > 0) selectSlide(curS - 1);
+  }, [curS, selectSlide]);
 
   const goNext = useCallback(() => {
-    if (cur < slides.length - 1) selectSlide(cur + 1);
-  }, [cur, slides.length, selectSlide]);
+    if (curS < slidesS.length - 1) selectSlide(curS + 1);
+  }, [curS, slidesS.length, selectSlide]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,13 +156,13 @@ export default function CarouselTab({
 
   const resetAll = useCallback(() => {
     if (confirm("Reset all slides?")) {
-      resetSlides(DEFAULT_SLIDES, 0);
-      setGlobalStyle(DEFAULT_GLOBAL_STYLE);
+      resetSlides(DEFAULT_SLIDES_DECK, 0);
+      setGlobalStyleS(DEFAULT_GLOBAL_STYLE);
     }
   }, [resetSlides]);
 
   const patchGlobal = (patch: Partial<GlobalStyle>) => {
-    setGlobalStyle((g) => ({ ...g, ...patch }));
+    setGlobalStyleS((g) => ({ ...g, ...patch }));
   };
 
   useEffect(() => {
@@ -191,64 +180,56 @@ export default function CarouselTab({
     <>
       <aside>
         <SlideList
-          slides={slides}
-          cur={cur}
+          slides={slidesS}
+          cur={curS}
           onSelect={selectSlide}
           onDelete={deleteSlide}
           onReorder={reorderSlides}
           onAdd={addSlide}
         />
-        <SidebarControls
+        <SlidesSidebarControls
           slide={current}
-          globalStyle={globalStyle}
+          globalStyle={globalStyleS}
           onPatchSlide={patchSlideById}
           onChangeGlobal={patchGlobal}
-        />
-        <TransitionPanel
-          slide={current}
-          cur={cur}
-          totalSlides={slides.length}
-          globalStyle={globalStyle}
-          onProgress={onProgress}
-          onToast={onToast}
         />
       </aside>
 
       <main>
         <div className="cwrap">
-          <SlideCanvas
+          <SlidesCanvas
             slide={current}
-            globalStyle={globalStyle}
-            slideIndex={cur}
-            totalSlides={slides.length}
+            globalStyle={globalStyleS}
+            slideIndex={curS}
+            totalSlides={slidesS.length}
           />
 
           <div className="slide-nav">
             <button
               type="button"
               className="nav-btn"
-              disabled={cur === 0}
+              disabled={curS === 0}
               onClick={goPrev}
             >
               ←
             </button>
             <span className="nav-c">
-              {cur + 1} / {slides.length}
+              {curS + 1} / {slidesS.length}
             </span>
             <button
               type="button"
               className="nav-btn"
-              disabled={cur >= slides.length - 1}
+              disabled={curS >= slidesS.length - 1}
               onClick={goNext}
             >
               →
             </button>
           </div>
 
-          <ExportBar
-            slides={slides}
-            cur={cur}
-            globalStyle={globalStyle}
+          <SlidesExportBar
+            slides={slidesS}
+            cur={curS}
+            globalStyle={globalStyleS}
             onProgress={onProgress}
             onToast={onToast}
           />

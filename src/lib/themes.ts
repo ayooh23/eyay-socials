@@ -12,6 +12,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#fff",
     term: "#0f0f0f",
     termT: "rgba(255,255,255,.62)",
+    stroke: "#333333",
   },
   light: {
     bg: "#f5f5f5",
@@ -24,6 +25,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#fff",
     term: "#e4e4e4",
     termT: "rgba(0,0,0,.58)",
+    stroke: "#cccccc",
   },
   blue: {
     bg: "#0000FF",
@@ -36,6 +38,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#0000ff",
     term: "rgba(0,0,0,.18)",
     termT: "rgba(255,255,255,.76)",
+    stroke: "#4444ff",
   },
   cream: {
     bg: "#faf8f4",
@@ -48,6 +51,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#faf8f4",
     term: "#ece7db",
     termT: "rgba(0,0,0,.55)",
+    stroke: "#c8c3b8",
   },
   midnight: {
     bg: "#1a1a2e",
@@ -60,6 +64,7 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#fff",
     term: "#111124",
     termT: "rgba(232,232,244,.6)",
+    stroke: "#3a3a5e",
   },
   red: {
     bg: "#ef4444",
@@ -72,5 +77,6 @@ export const THEMES: Record<ThemeKey, ThemeTokens> = {
     bOutT: "#ef4444",
     term: "rgba(0,0,0,.14)",
     termT: "rgba(255,255,255,.74)",
+    stroke: "#ff7777",
   },
 };

@@ -447,6 +447,134 @@ main::-webkit-scrollbar-thumb {
   overflow: hidden;
 }
 
+/* 16:9 slides mode preview (~410px wide) */
+.sf-outer--slides {
+  --sws: 410px;
+  --shs: 231px;
+  --sss: 0.21354167;
+  width: var(--sws);
+  height: var(--shs);
+}
+#slide-canvas--slides {
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  transform: scale(var(--sss));
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+/* Deck grid: 1920×1080 */
+.s-grid--deck {
+  grid-template-rows: 80px 1fr 80px;
+  padding: 0 96px;
+}
+.sd-deck-hdr .s-tag,
+.sd-deck-hdr .s-num {
+  font-size: 26px;
+}
+.sd-deck-ftr .s-cta {
+  font-size: 22px;
+}
+.sd-deck-dot {
+  width: 10px;
+  height: 10px;
+}
+.sd-deck-eyebrow {
+  font-size: 26px;
+  margin-bottom: 18px;
+}
+.sd-deck-bar {
+  width: 72px;
+  height: 5px;
+}
+.sd-deck-body {
+  padding: 24px 0;
+}
+.sd-deck-stats {
+  gap: 80px;
+}
+.sd-deck-sl {
+  font-size: 20px;
+}
+.sd-deck-list {
+  gap: 20px;
+}
+.sd-deck-ldot {
+  width: 10px;
+  height: 10px;
+  margin-top: 14px;
+}
+.sd-deck-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+.sd-deck-split-img {
+  aspect-ratio: 16 / 10;
+  border: 2px dashed;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.sd-deck-split-img--fill {
+  border: none;
+  padding: 0;
+}
+.sd-deck-split-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sd-deck-chat {
+  display: flex;
+  flex-direction: column;
+}
+.sd-deck-chat-body .s-bwrap {
+  max-width: 72%;
+}
+.sd-deck-term {
+  font-family: var(--mono);
+  line-height: 1.75;
+}
+.sd-deck-fin-scroll {
+  width: 100%;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.sd-deck-fin-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sd-deck-fin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+.sd-deck-split-hint {
+  font-family: var(--mono);
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+.sd-deck-split-text {
+  min-width: 0;
+}
+.sd-deck-attrib {
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
 /* ── SLIDE INTERIOR ── */
 .s-bg {
   position: absolute;
@@ -548,7 +676,7 @@ main::-webkit-scrollbar-thumb {
 }
 .s-hl {
   font-family: var(--sans);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.04;
   letter-spacing: -0.035em;
   margin-bottom: 28px;
@@ -574,14 +702,45 @@ main::-webkit-scrollbar-thumb {
 .s-brow.out {
   justify-content: flex-end;
 }
-.s-bubble {
+.s-bwrap {
+  display: flex;
+  flex-direction: column;
   max-width: 68%;
-  padding: 20px 26px;
+  min-width: 0;
+}
+.s-brow.in .s-bwrap {
+  align-items: flex-start;
+  text-align: left;
+}
+.s-brow.out .s-bwrap {
+  align-items: flex-end;
+  text-align: right;
+}
+.s-bname {
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  opacity: 0.48;
+  white-space: nowrap;
+}
+.s-bubble {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 100%;
+  padding: 24px 26px;
   border-radius: 34px;
   font-family: var(--sans);
   font-size: 28px;
-  line-height: 1.4;
+  line-height: 28px;
   font-weight: 400;
+  white-space: nowrap;
+}
+.s-bubble.s-bubble-wrap {
+  line-height: 39px;
+  white-space: normal;
+  word-break: break-word;
 }
 .s-bubble.in {
   border-bottom-left-radius: 8px;
@@ -592,6 +751,7 @@ main::-webkit-scrollbar-thumb {
 .s-bmeta {
   font-family: var(--mono);
   font-size: 18px;
+  line-height: 22px;
   margin-top: 5px;
   opacity: 0.28;
 }
@@ -650,31 +810,59 @@ main::-webkit-scrollbar-thumb {
   opacity: 0.5;
 }
 
+/* Slide enter — stagger: clean fade + slide */
+@keyframes s-motion-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chat bubble entrance — clean fade + subtle slide */
+@keyframes s-chat-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Terminal layout */
 .s-term {
   font-family: var(--mono);
   font-size: 26px;
   padding: 34px 40px;
   border-radius: 16px;
-  line-height: 1.8;
+  line-height: 47px;
+}
+.s-term-stage {
+  display: block;
 }
 .s-tpr {
   margin-right: 10px;
 }
 .s-tcur {
   display: inline-block;
-  width: 14px;
-  height: 22px;
-  vertical-align: text-bottom;
-  animation: blink 1s steps(1) infinite;
+  width: 16px;
+  height: 26px;
+  vertical-align: middle;
+  border-radius: 2px;
+  margin-left: 2px;
+  animation: s-tcur-blink 1s steps(1) infinite;
 }
-@keyframes blink {
+@keyframes s-tcur-blink {
   0%,
-  49% {
+  100% {
     opacity: 1;
   }
-  50%,
-  100% {
+  50% {
     opacity: 0;
   }
 }

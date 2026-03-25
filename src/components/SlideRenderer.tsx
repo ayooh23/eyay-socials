@@ -1,8 +1,19 @@
 "use client";
 
 import type { CSSProperties, RefObject } from "react";
+import { useMemo, useRef } from "react";
+import {
+  chatBubbleShouldWrap,
+  getChatBubbleList,
+} from "@/lib/chatSlide";
 import type { GlobalStyle, Slide, ThemeKey } from "@/lib/types";
 import { THEMES } from "@/lib/themes";
+import {
+  STAGGER_BASE_MS,
+  STAGGER_STEP_MS,
+  useStaggerFadeIn,
+} from "@/hooks/useStaggerFadeIn";
+import { TypewriterText } from "@/components/TypewriterText";
 
 export interface SlideRendererProps {
   slide: Slide;
@@ -13,6 +24,8 @@ export interface SlideRendererProps {
   totalSlides: number;
   /** When true, chat bubbles render fully visible (export / offscreen). */
   staticChat?: boolean;
+  /** When false (e.g. PNG capture), skip enter animations and typewriter. */
+  animate?: boolean;
   chatContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -32,12 +45,85 @@ export default function SlideRenderer({
   slideIndex,
   totalSlides,
   staticChat,
+  animate = true,
   chatContainerRef,
 }: SlideRendererProps) {
+  const animRootRef = useRef<HTMLDivElement>(null);
+  const runAnim = animate;
+  const fs = globalStyle.size;
+
+  const headlineAnimKey = useMemo(
+    () =>
+      [
+        slide.id,
+        slide.eyebrow,
+        slide.headline,
+        slide.body,
+        fs,
+      ].join("\u0001"),
+    [slide.id, slide.eyebrow, slide.headline, slide.body, fs],
+  );
+
+  const statAnimKey = useMemo(
+    () =>
+      [
+        slide.id,
+        slide.eyebrow,
+        slide.headline,
+        slide.s1n,
+        slide.s1l,
+        slide.s2n,
+        slide.s2l,
+        fs,
+      ].join("\u0001"),
+    [
+      slide.id,
+      slide.eyebrow,
+      slide.headline,
+      slide.s1n,
+      slide.s1l,
+      slide.s2n,
+      slide.s2l,
+      fs,
+    ],
+  );
+
+  const listAnimKey = useMemo(
+    () =>
+      [slide.id, slide.eyebrow, slide.headline, slide.l1, slide.l2, slide.l3, slide.l4, fs].join(
+        "\u0001",
+      ),
+    [slide.id, slide.eyebrow, slide.headline, slide.l1, slide.l2, slide.l3, slide.l4, fs],
+  );
+
+  const terminalAnimKey = useMemo(
+    () => [slide.id, slide.eyebrow, slide.term].join("\u0001"),
+    [slide.id, slide.eyebrow, slide.term],
+  );
+
+  const chatEyebrowAnimKey = useMemo(
+    () => [slide.id, slide.eyebrow].join("\u0001"),
+    [slide.id, slide.eyebrow],
+  );
+
+  useStaggerFadeIn(runAnim && slide.layout === "headline", animRootRef, [headlineAnimKey]);
+
+  useStaggerFadeIn(runAnim && slide.layout === "stat", animRootRef, [statAnimKey]);
+
+  useStaggerFadeIn(runAnim && slide.layout === "list", animRootRef, [listAnimKey]);
+
+  useStaggerFadeIn(runAnim && slide.layout === "terminal", animRootRef, [terminalAnimKey]);
+
+  useStaggerFadeIn(
+    runAnim && slide.layout === "chat" && !!slide.eyebrow,
+    animRootRef,
+    [chatEyebrowAnimKey],
+  );
+
   const paletteKey = (themeKey ?? slide.theme ?? "dark") as ThemeKey;
   const t = THEMES[paletteKey] ?? THEMES.dark;
   const align = slide.align ?? "left";
-  const { size: fs, showTag, showNum } = globalStyle;
+  const { showTag, showNum } = globalStyle;
   const ac = align === "center";
   const ar = align === "right";
   const acs: CSSProperties = { textAlign: align };
@@ -58,55 +144,49 @@ export default function SlideRenderer({
     ? { margin: "0 auto 32px" }
     : { marginBottom: 32 };
 
-  const chatBubbles = [
-    slide.m1
-      ? {
-          txt: slide.m1,
-          d: "in" as const,
-          time: "01:23",
-        }
-      : null,
-    slide.m2
-      ? {
-          txt: slide.m2,
-          d: "out" as const,
-          time: "06:46",
-        }
-      : null,
-    slide.m3
-      ? {
-          txt: slide.m3,
-          d: "in" as const,
-          time: "11:18",
-        }
-      : null,
-  ].filter(Boolean) as {
-    txt: string;
-    d: "in" | "out";
-    time: string;
-  }[];
+  const chatBubbles = getChatBubbleList(slide);
+  const chatShowFinal = staticChat || !runAnim;
+
+  const termLine = slide.term || "where ideas get built today";
+  const termTypeDelay =
+    STAGGER_BASE_MS +
+    (slide.eyebrow?.trim() ? STAGGER_STEP_MS : 0) +
+    480;
 
   let body: React.ReactNode = null;
 
   if (slide.layout === "headline") {
     body = (
-      <div className="s-body" style={acs}>
+      <div ref={animRootRef} className="s-body" style={acs}>
         {slide.eyebrow ? (
-          <div className="s-eyebrow" style={{ color: t.muted }}>
+          <div
+            className="s-eyebrow"
+            data-animate
+            style={{ color: t.muted }}
+          >
             {slide.eyebrow}
           </div>
         ) : null}
         <div
           className="s-bar"
+          data-animate
           style={{ background: t.accent, ...barMarginHeadline }}
         />
         {slide.headline ? (
-          <div className="s-hl" style={{ color: t.text, fontSize: fs }}>
+          <div
+            className="s-hl"
+            data-animate
+            style={{ color: t.text, fontSize: fs }}
+          >
             {linesToBr(slide.headline)}
           </div>
         ) : null}
         {slide.body ? (
-          <div className="s-bt" style={{ color: t.muted, ...autoM }}>
+          <div
+            className="s-bt"
+            data-animate
+            style={{ color: t.muted, ...autoM }}
+          >
             {slide.body}
           </div>
         ) : null}
@@ -115,6 +195,7 @@ export default function SlideRenderer({
   } else if (slide.layout === "chat") {
     body = (
       <div
+        ref={animRootRef}
         className="s-body"
         style={{
           textAlign: "left",
@@ -125,45 +206,49 @@ export default function SlideRenderer({
         {slide.eyebrow ? (
           <div
             className="s-eyebrow"
+            data-animate
             style={{ color: t.muted, marginBottom: 14 }}
           >
             {slide.eyebrow}
           </div>
         ) : null}
         <div ref={chatContainerRef} className="s-chat">
-          {chatBubbles.map((b, i) => (
-            <div
-              key={i}
-              className={`s-brow ${b.d === "out" ? "out" : ""}`}
-              data-bi={i}
-              style={
-                staticChat
-                  ? {
-                      opacity: 1,
-                      transform: "translateY(0) scale(1)",
-                    }
-                  : {
-                      opacity: 0,
-                      transform: "translateY(18px) scale(0.96)",
-                    }
-              }
-            >
-              <div>
-                <div
-                  className={`s-bubble ${b.d}`}
-                  style={{
-                    background: b.d === "in" ? t.bIn : t.bOut,
-                    color: b.d === "in" ? t.bInT : t.bOutT,
-                  }}
-                >
-                  {b.txt}
-                </div>
-                <div className="s-bmeta" style={{ color: t.muted }}>
-                  {b.time}
+          {chatBubbles.map((b, i) => {
+            const wrap = chatBubbleShouldWrap(b.txt);
+            return (
+              <div
+                key={b.key}
+                className={`s-brow ${b.d === "out" ? "out" : ""}`}
+                data-bi={i}
+                style={
+                  chatShowFinal
+                    ? { opacity: 1, transform: "none" }
+                    : {
+                        opacity: 0,
+                        transform: "translateY(8px)",
+                      }
+                }
+              >
+                <div className="s-bwrap">
+                  <div className="s-bname" style={{ color: t.muted }}>
+                    {b.nm}
+                  </div>
+                  <div
+                    className={`s-bubble ${b.d}${wrap ? " s-bubble-wrap" : ""}`}
+                    style={{
+                      background: b.d === "in" ? t.bIn : t.bOut,
+                      color: b.d === "in" ? t.bInT : t.bOutT,
+                    }}
+                  >
+                    {wrap ? linesToBr(b.txt) : b.txt}
+                  </div>
+                  <div className="s-bmeta" style={{ color: t.muted }}>
+                    {b.time}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -174,19 +259,25 @@ export default function SlideRenderer({
     ].filter(Boolean) as { n: string; l: string }[];
 
     body = (
-      <div className="s-body" style={acs}>
+      <div ref={animRootRef} className="s-body" style={acs}>
         {slide.eyebrow ? (
-          <div className="s-eyebrow" style={{ color: t.muted }}>
+          <div
+            className="s-eyebrow"
+            data-animate
+            style={{ color: t.muted }}
+          >
             {slide.eyebrow}
           </div>
         ) : null}
         <div
           className="s-bar"
+          data-animate
           style={{ background: t.accent, ...barMarginStatList }}
         />
         {slide.headline ? (
           <div
             className="s-hl"
+            data-animate
             style={{
               color: t.text,
               fontSize: Math.min(fs, 80),
@@ -201,7 +292,7 @@ export default function SlideRenderer({
           style={ac ? { justifyContent: "center" } : undefined}
         >
           {sts.map((st, i) => (
-            <div key={i} className="s-stat">
+            <div key={i} className="s-stat" data-animate>
               <div className="s-sn" style={{ color: t.accent }}>
                 {st.n}
               </div>
@@ -216,19 +307,25 @@ export default function SlideRenderer({
   } else if (slide.layout === "list") {
     const its = [slide.l1, slide.l2, slide.l3, slide.l4].filter(Boolean);
     body = (
-      <div className="s-body" style={acs}>
+      <div ref={animRootRef} className="s-body" style={acs}>
         {slide.eyebrow ? (
-          <div className="s-eyebrow" style={{ color: t.muted }}>
+          <div
+            className="s-eyebrow"
+            data-animate
+            style={{ color: t.muted }}
+          >
             {slide.eyebrow}
           </div>
         ) : null}
         <div
           className="s-bar"
+          data-animate
           style={{ background: t.accent, ...barMarginStatList }}
         />
         {slide.headline ? (
           <div
             className="s-hl"
+            data-animate
             style={{
               color: t.text,
               fontSize: Math.min(fs, 72),
@@ -243,7 +340,12 @@ export default function SlideRenderer({
           style={ac ? { alignItems: "center" } : undefined}
         >
           {its.map((it, i) => (
-            <div key={i} className="s-li" style={{ color: t.text }}>
+            <div
+              key={i}
+              className="s-li"
+              data-animate
+              style={{ color: t.text }}
+            >
               <div className="s-ldot" style={{ background: t.accent }} />
               {it}
             </div>
@@ -253,9 +355,13 @@ export default function SlideRenderer({
     );
   } else if (slide.layout === "terminal") {
     body = (
-      <div className="s-body">
+      <div ref={animRootRef} className="s-body">
         {slide.eyebrow ? (
-          <div className="s-eyebrow" style={{ color: t.muted }}>
+          <div
+            className="s-eyebrow"
+            data-animate
+            style={{ color: t.muted }}
+          >
             {slide.eyebrow}
           </div>
         ) : null}
@@ -263,11 +369,24 @@ export default function SlideRenderer({
           className="s-term"
           style={{ background: t.term, color: t.termT }}
         >
-          <span className="s-tpr" style={{ color: t.accent }}>
-            {"➜  eyay:"}
-          </span>
-          {slide.term || "where ideas get built today"}
-          <span className="s-tcur" style={{ background: t.accent }} />
+          <div className="s-term-stage" data-animate>
+            <span className="s-tpr" style={{ color: t.accent }}>
+              {"➜  eyay:"}
+            </span>
+            <span className="s-tcmd-text">
+              {runAnim ? (
+                <TypewriterText
+                  text={termLine}
+                  active
+                  startDelayMs={termTypeDelay}
+                  resetKey={`${slide.id}\0${termLine}`}
+                />
+              ) : (
+                termLine
+              )}
+            </span>
+            <span className="s-tcur" style={{ background: t.accent }} />
+          </div>
         </div>
       </div>
     );

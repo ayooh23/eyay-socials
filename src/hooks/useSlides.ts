@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { Slide } from "@/lib/types";
-import { createSlide } from "@/data/defaults";
 
-export function useSlides(initialSlides: Slide[], initialCur = 0) {
-  const [slides, setSlides] = useState<Slide[]>(initialSlides);
+export function useSlides<T extends { id: string }>(
+  initialSlides: T[],
+  initialCur: number,
+  createBlankSlide: () => T,
+) {
+  const [slides, setSlides] = useState<T[]>(initialSlides);
   const [cur, setCur] = useState(initialCur);
 
   const selectSlide = useCallback((index: number) => {
@@ -13,14 +15,14 @@ export function useSlides(initialSlides: Slide[], initialCur = 0) {
   }, []);
 
   const addSlide = useCallback(() => {
-    const s = createSlide({ layout: "headline", headline: "New slide", cta: "eyay.studio" });
+    const s = createBlankSlide();
     setSlides((prev) => {
       const next = [...prev];
       next.splice(cur + 1, 0, s);
       return next;
     });
     setCur((c) => c + 1);
-  }, [cur]);
+  }, [cur, createBlankSlide]);
 
   const deleteSlide = useCallback((index: number) => {
     setSlides((prev) => {
@@ -51,12 +53,12 @@ export function useSlides(initialSlides: Slide[], initialCur = 0) {
     });
   }, []);
 
-  const resetSlides = useCallback((nextSlides: Slide[], nextCur = 0) => {
+  const resetSlides = useCallback((nextSlides: T[], nextCur = 0) => {
     setSlides(nextSlides);
     setCur(nextCur);
   }, []);
 
-  const patchSlideById = useCallback((slideId: string, patch: Partial<Slide>) => {
+  const patchSlideById = useCallback((slideId: string, patch: Partial<T>) => {
     if (!slideId) return;
     setSlides((prev) => {
       const j = prev.findIndex((s) => s.id === slideId);

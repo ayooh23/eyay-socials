@@ -5,6 +5,7 @@ import {
   xAllPNG,
   xGIF,
   xPNG,
+  xSlideVideo,
   xVideo,
   type ProgressFn,
   type ToastFn,
@@ -56,7 +57,18 @@ export default function ExportBar({
       </button>
       <button
         type="button"
+        className="btn btn-g btn-sm"
+        title="Current slide only. H.264 MP4 when supported (e.g. Chrome); otherwise WebM."
+        onClick={() =>
+          xSlideVideo(slide, cur, slides.length, globalStyle, onProgress, onToast)
+        }
+      >
+        ↓ slide video
+      </button>
+      <button
+        type="button"
         className="btn btn-p btn-sm"
+        title="Encodes as H.264 MP4 when your browser supports it (e.g. Chrome); otherwise WebM."
         onClick={() => xVideo(slides, globalStyle, onProgress, onToast)}
       >
         ↓ video
