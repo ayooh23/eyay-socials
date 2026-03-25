@@ -111,6 +111,7 @@ export const DEFAULT_GLOBAL_STYLE = {
   size: 88,
   showTag: true,
   showNum: true,
+  showDots: true,
 };
 
 export function createSlidesSlide(partial: Partial<SlidesSlide> = {}): SlidesSlide {

@@ -123,7 +123,7 @@ export default function SlideRenderer({
   const paletteKey = (themeKey ?? slide.theme ?? "dark") as ThemeKey;
   const t = THEMES[paletteKey] ?? THEMES.dark;
   const align = slide.align ?? "left";
-  const { showTag, showNum } = globalStyle;
+  const { showTag, showNum, showDots } = globalStyle;
   const ac = align === "center";
   const ar = align === "right";
   const acs: CSSProperties = { textAlign: align };
@@ -392,13 +392,15 @@ export default function SlideRenderer({
     );
   }
 
-  const dots = Array.from({ length: totalSlides }, (_, i) => (
-    <div
-      key={i}
-      className={`s-dot ${i === slideIndex ? "on" : ""}`}
-      style={{ color: t.text }}
-    />
-  ));
+  const dots = showDots
+    ? Array.from({ length: totalSlides }, (_, i) => (
+        <div
+          key={i}
+          className={`s-dot ${i === slideIndex ? "on" : ""}`}
+          style={{ color: t.text }}
+        />
+      ))
+    : null;
 
   return (
     <>
@@ -431,7 +433,7 @@ export default function SlideRenderer({
           <span className="s-cta" style={{ color: t.muted }}>
             {slide.cta || ""}
           </span>
-          <div className="s-dots">{dots}</div>
+          {dots ? <div className="s-dots">{dots}</div> : null}
         </div>
       </div>
     </>

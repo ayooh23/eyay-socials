@@ -123,6 +123,7 @@ export default function CarouselTab({
             size: gs.size ?? DEFAULT_GLOBAL_STYLE.size,
             showTag: gs.showTag ?? DEFAULT_GLOBAL_STYLE.showTag,
             showNum: gs.showNum ?? DEFAULT_GLOBAL_STYLE.showNum,
+            showDots: gs.showDots ?? DEFAULT_GLOBAL_STYLE.showDots,
           });
         }
       }

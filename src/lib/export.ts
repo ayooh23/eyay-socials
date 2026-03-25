@@ -6,6 +6,9 @@ import html2canvas from "html2canvas";
 import DeckSlideRenderer from "@/components/DeckSlideRenderer";
 import SlideRenderer from "@/components/SlideRenderer";
 import {
+  EASE_OUT,
+  MOTION_REVEAL_MS,
+  CHAT_ROW_REVEAL_MS,
   STAGGER_BASE_MS,
   STAGGER_STEP_MS,
   TYPEWRITER_CHAR_MS,
@@ -40,202 +43,144 @@ function doubleRaf(): Promise<void> {
 }
 
 /* ================================================================
- * Slide-video export: JS-driven frame-by-frame animation engine.
+ * Slide-video export: CSS-animation-seek engine.
  *
- * We mount the slide fully static (animate=false, staticChat=true)
- * so NO React hooks or CSS animations compete. Then:
- *   1. Read natural opacities from the DOM
- *   2. Hide animated elements + clear typewriter text
- *   3. Pre-render every frame with JS-computed inline styles
- *      (only opacity + 2D transform — html2canvas compatible)
- *   4. Encode pre-rendered frames at real-time playback speed
+ * We apply the SAME CSS @keyframes used by the live preview —
+ * paused — and "seek" to each frame time by adjusting
+ * animation-delay.  The browser's CSS engine computes opacity,
+ * transform, vertical-align, line-height, etc. natively.
+ * html-to-image captures each frame via SVG foreignObject,
+ * which uses the browser's own rendering engine (not a JS
+ * re-implementation like html2canvas), so text layout, font
+ * metrics, and vertical alignment are pixel-perfect.
+ *
+ * Typewriter text (terminal) is still JS-driven via textContent.
  * ================================================================ */
 
 const EXPORT_FPS = 30;
-const EXPORT_SCALE = 2;
 
-const XANIM_DUR_STAGGER = 500;
-const XANIM_DUR_CHAT = 500;
-
-const CHAT_EXPORT_SPEEDS = {
-  normal: { f: 300, g: 480 },
-  fast: { f: 180, g: 320 },
-  slow: { f: 500, g: 720 },
+const CHAT_SPEEDS = {
+  normal: { f: 360, g: 640 },
+  fast: { f: 220, g: 440 },
+  slow: { f: 640, g: 980 },
 } as const;
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-function easeOutQuart(t: number): number {
-  return 1 - Math.pow(1 - t, 4);
-}
-
-type XAnimKind = "stagger" | "chat" | "typewriter";
-interface XAnimTarget {
+interface SeekTarget {
   el: HTMLElement;
-  kind: XAnimKind;
   delay: number;
   dur: number;
-  targetOpacity: number;
-  fullText?: string;
 }
 
-function gatherXAnimTargets(
+interface TypewriterTarget {
+  el: HTMLElement;
+  fullText: string;
+  startMs: number;
+  charMs: number;
+}
+
+function setupExportTargets(
   root: HTMLElement,
   slide: Slide,
-): XAnimTarget[] {
-  const targets: XAnimTarget[] = [];
+): { seek: SeekTarget[]; tw: TypewriterTarget | null } {
+  const seek: SeekTarget[] = [];
+  let tw: TypewriterTarget | null = null;
+
+  const applyPausedAnim = (
+    el: HTMLElement,
+    keyframe: string,
+    dur: number,
+    delay: number,
+  ) => {
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("transform");
+    el.style.animation =
+      `${keyframe} ${dur}ms ${EASE_OUT} ${delay}ms both`;
+    el.style.animationPlayState = "paused";
+    seek.push({ el, delay, dur });
+  };
 
   if (slide.layout === "chat") {
     const eyebrow = root.querySelector<HTMLElement>(
       ".s-eyebrow[data-animate]",
     );
     if (eyebrow) {
-      targets.push({
-        el: eyebrow,
-        kind: "stagger",
-        delay: STAGGER_BASE_MS,
-        dur: XANIM_DUR_STAGGER,
-        targetOpacity: parseFloat(getComputedStyle(eyebrow).opacity) || 1,
-      });
+      applyPausedAnim(
+        eyebrow,
+        "s-motion-reveal",
+        MOTION_REVEAL_MS,
+        STAGGER_BASE_MS,
+      );
     }
-    const sp = CHAT_EXPORT_SPEEDS[slide.chatSpeed || "normal"];
+
+    const sp = CHAT_SPEEDS[slide.chatSpeed || "normal"];
     root.querySelectorAll<HTMLElement>("[data-bi]").forEach((el, i) => {
-      targets.push({
+      applyPausedAnim(
         el,
-        kind: "chat",
-        delay: sp.f + i * sp.g,
-        dur: XANIM_DUR_CHAT,
-        targetOpacity: 1,
-      });
+        "s-chat-row-enter",
+        CHAT_ROW_REVEAL_MS,
+        sp.f + i * sp.g,
+      );
     });
   } else if (slide.layout === "terminal") {
     const staggerEls = root.querySelectorAll<HTMLElement>("[data-animate]");
     staggerEls.forEach((el, i) => {
-      targets.push({
+      applyPausedAnim(
         el,
-        kind: "stagger",
-        delay: STAGGER_BASE_MS + i * STAGGER_STEP_MS,
-        dur: XANIM_DUR_STAGGER,
-        targetOpacity: parseFloat(getComputedStyle(el).opacity) || 1,
-      });
+        "s-motion-reveal",
+        MOTION_REVEAL_MS,
+        STAGGER_BASE_MS + i * STAGGER_STEP_MS,
+      );
     });
+
     const textEl = root.querySelector<HTMLElement>(".s-tcmd-text");
     if (textEl) {
       const full = textEl.textContent || "";
-      const charStartDelay =
-        STAGGER_BASE_MS +
-        Math.max(0, staggerEls.length - 1) * STAGGER_STEP_MS +
-        Math.round(XANIM_DUR_STAGGER * 0.7);
-      targets.push({
-        el: textEl,
-        kind: "typewriter",
-        delay: charStartDelay,
-        dur: full.length * TYPEWRITER_CHAR_MS,
-        targetOpacity: 1,
-        fullText: full,
-      });
+      const hasEyebrow = Boolean(slide.eyebrow?.trim());
+      const startMs =
+        STAGGER_BASE_MS + (hasEyebrow ? STAGGER_STEP_MS : 0) + 480;
+      tw = { el: textEl, fullText: full, startMs, charMs: TYPEWRITER_CHAR_MS };
+      textEl.textContent = "";
     }
   } else {
     root.querySelectorAll<HTMLElement>("[data-animate]").forEach((el, i) => {
-      targets.push({
+      applyPausedAnim(
         el,
-        kind: "stagger",
-        delay: STAGGER_BASE_MS + i * STAGGER_STEP_MS,
-        dur: XANIM_DUR_STAGGER,
-        targetOpacity: parseFloat(getComputedStyle(el).opacity) || 1,
-      });
+        "s-motion-reveal",
+        MOTION_REVEAL_MS,
+        STAGGER_BASE_MS + i * STAGGER_STEP_MS,
+      );
     });
   }
-  return targets;
-}
-
-function initXAnimTargets(targets: XAnimTarget[]) {
-  for (const t of targets) {
-    switch (t.kind) {
-      case "stagger":
-        t.el.style.opacity = "0";
-        t.el.style.transform = "translateY(16px)";
-        break;
-      case "chat":
-        t.el.style.opacity = "0";
-        t.el.style.transform = "translateY(12px)";
-        break;
-      case "typewriter":
-        t.el.textContent = "";
-        break;
-    }
-  }
-}
-
-function setXAnimFrame(targets: XAnimTarget[], ms: number) {
-  for (const t of targets) {
-    const raw = (ms - t.delay) / Math.max(t.dur, 1);
-    const p = Math.max(0, Math.min(1, raw));
-
-    switch (t.kind) {
-      case "stagger": {
-        if (p <= 0) {
-          t.el.style.opacity = "0";
-          t.el.style.transform = "translateY(16px)";
-        } else if (p >= 1) {
-          t.el.style.opacity = String(t.targetOpacity);
-          t.el.style.transform = "";
-        } else {
-          const oE = easeOutCubic(p);
-          const mE = easeOutQuart(p);
-          t.el.style.opacity = String(oE * t.targetOpacity);
-          t.el.style.transform = `translateY(${(16 * (1 - mE)).toFixed(2)}px)`;
-        }
-        break;
-      }
-      case "chat": {
-        if (p <= 0) {
-          t.el.style.opacity = "0";
-          t.el.style.transform = "translateY(12px)";
-        } else if (p >= 1) {
-          t.el.style.opacity = "1";
-          t.el.style.transform = "";
-        } else {
-          const oE = easeOutCubic(p);
-          const mE = easeOutQuart(p);
-          t.el.style.opacity = String(oE);
-          t.el.style.transform = `translateY(${(12 * (1 - mE)).toFixed(2)}px)`;
-        }
-        break;
-      }
-      case "typewriter": {
-        const full = t.fullText!;
-        if (p <= 0) {
-          t.el.textContent = "";
-        } else if (p >= 1) {
-          t.el.textContent = full;
-        } else {
-          const n = Math.min(full.length, Math.floor(p * full.length) + 1);
-          t.el.textContent = full.slice(0, n);
-        }
-        break;
-      }
-    }
-  }
-}
-
-/**
- * Export-only DOM overrides — compensates for html2canvas rendering
- * differences at 2x scale without touching the preview CSS.
- */
-function patchDomForExport(root: HTMLElement) {
-  root.querySelectorAll<HTMLElement>(".s-bubble").forEach((el) => {
-    el.style.padding = "22px 26px";
-  });
 
   root.querySelectorAll<HTMLElement>(".s-tcur").forEach((el) => {
     el.style.animation = "none";
     el.style.opacity = "1";
-    el.style.verticalAlign = "baseline";
-    el.style.position = "relative";
-    el.style.top = "4px";
   });
+
+  return { seek, tw };
+}
+
+function seekFrame(
+  seek: SeekTarget[],
+  tw: TypewriterTarget | null,
+  ms: number,
+) {
+  for (const t of seek) {
+    t.el.style.animationDelay = `${t.delay - ms}ms`;
+  }
+
+  if (tw) {
+    const elapsed = ms - tw.startMs;
+    if (elapsed <= 0) {
+      tw.el.textContent = "";
+    } else {
+      const n = Math.min(
+        tw.fullText.length,
+        Math.floor(elapsed / tw.charMs) + 1,
+      );
+      tw.el.textContent = tw.fullText.slice(0, n);
+    }
+  }
 }
 
 function loadScript(src: string) {
@@ -302,7 +247,7 @@ async function captureOffscreen(
 ): Promise<HTMLCanvasElement> {
   const { w, h } = dimensions;
   const host = document.createElement("div");
-  host.style.cssText = `position:fixed;left:-99999px;top:-99999px;width:${w}px;height:${h}px;overflow:hidden;pointer-events:none;z-index:-1;`;
+  host.style.cssText = `position:absolute;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;pointer-events:none;z-index:-1;`;
   const inner = document.createElement("div");
   inner.style.cssText = `position:relative;width:${w}px;height:${h}px;overflow:hidden;font-family:var(--sans, 'DM Sans', system-ui, sans-serif);`;
   host.appendChild(inner);
@@ -320,6 +265,10 @@ async function captureOffscreen(
     useCORS: true,
     backgroundColor: null,
     logging: false,
+    x: 0,
+    y: 0,
+    scrollX: 0,
+    scrollY: 0,
   });
 
   root.unmount();
@@ -613,15 +562,19 @@ export async function xVideo(
   }
 }
 
+function finalizeAnimatedEls(container: HTMLElement) {
+  container.querySelectorAll<HTMLElement>("[data-animate]").forEach((el) => {
+    const cs = getComputedStyle(el);
+    el.style.opacity = cs.opacity;
+    el.style.transform = cs.transform;
+    el.style.animation = "none";
+  });
+}
+
 /**
  * Animated slide video — two-phase pipeline:
- *   Phase 1  Mount fully static slide, gather targets, pre-render
- *            every frame with JS-computed inline styles.
- *   Phase 2  Encode pre-rendered frames at real-time playback speed.
- *
- * Terminal → typewriter (char-by-char)
- * Chat    → fade + slide up
- * Others  → staggered fade + slide up
+ *   Phase 1  Pre-render every frame into an ImageBitmap buffer.
+ *   Phase 2  Encode from buffer via WebCodecs (→ mp4) or MediaRecorder fallback.
  */
 export async function xSlideVideo(
   slide: Slide,
@@ -633,7 +586,7 @@ export async function xSlideVideo(
 ): Promise<void> {
   const { w, h } = CAROUSEL_CAPTURE;
   const host = document.createElement("div");
-  host.style.cssText = `position:fixed;left:-99999px;top:-99999px;width:${w}px;height:${h}px;overflow:hidden;pointer-events:none;z-index:-1;`;
+  host.style.cssText = `position:absolute;left:-99999px;top:0;width:${w}px;height:${h}px;overflow:hidden;pointer-events:none;z-index:-1;`;
   const inner = document.createElement("div");
   inner.style.cssText = `position:relative;width:${w}px;height:${h}px;overflow:hidden;font-family:var(--sans, 'DM Sans', system-ui, sans-serif);`;
   host.appendChild(inner);
@@ -658,90 +611,147 @@ export async function xSlideVideo(
     await doubleRaf();
     await sleep(200);
 
-    patchDomForExport(inner);
-
-    const targets = gatherXAnimTargets(inner, slide);
-    initXAnimTargets(targets);
+    const { seek, tw } = setupExportTargets(inner, slide);
+    finalizeAnimatedEls(inner);
     void inner.offsetHeight;
 
-    const animEndMs = targets.reduce(
+    let animEndMs = seek.reduce(
       (max, t) => Math.max(max, t.delay + t.dur),
       0,
     );
+    if (tw) {
+      animEndMs = Math.max(
+        animEndMs,
+        tw.startMs + tw.fullText.length * tw.charMs,
+      );
+    }
     const holdMs = 1500;
     const totalMs = Math.max(2400, animEndMs + holdMs);
     const totalFrames = Math.ceil((totalMs / 1000) * EXPORT_FPS);
 
     const h2cOpts = {
-      scale: EXPORT_SCALE,
+      scale: 1,
       width: w,
       height: h,
       useCORS: true,
       backgroundColor: null as string | null,
       logging: false,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
     };
 
-    const frames: HTMLCanvasElement[] = [];
+    // Phase 1 — Pre-render all frames into an ImageBitmap buffer
+    const bitmaps: ImageBitmap[] = [];
     for (let f = 0; f <= totalFrames; f++) {
       const elapsed = (f / EXPORT_FPS) * 1000;
-      setXAnimFrame(targets, elapsed);
-      frames.push(await html2canvas(inner, h2cOpts));
+      seekFrame(seek, tw, elapsed);
+      void inner.offsetHeight;
+      await doubleRaf();
+
+      const canvas = await html2canvas(inner, h2cOpts);
+      const bm = await createImageBitmap(canvas);
+      bitmaps.push(bm);
       onProgress(
         `rendering ${f + 1}/${totalFrames + 1}…`,
         2 + Math.round((f / totalFrames) * 58),
       );
     }
 
+    // Phase 2 — Encode from buffer
     onProgress("encoding…", 62);
-    const oc = document.createElement("canvas");
-    oc.width = w;
-    oc.height = h;
-    const gfx = oc.getContext("2d");
-    if (!gfx) throw new Error("2d context unavailable");
 
-    const fmt = pickVideoRecorderFormat();
-    const chunks: BlobPart[] = [];
-    const rec = new MediaRecorder(oc.captureStream(EXPORT_FPS), {
-      mimeType: fmt.mimeType,
-      videoBitsPerSecond: 18_000_000,
-    });
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
+    if (typeof VideoEncoder !== "undefined") {
+      const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+      const target = new ArrayBufferTarget();
+      const muxer = new Muxer({
+        target,
+        video: { codec: "avc", width: w, height: h },
+        fastStart: "in-memory",
+      });
 
-    await new Promise<void>((resolve) => {
-      rec.onstop = () => resolve();
-      rec.start(250);
+      const encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => { throw e; },
+      });
+      encoder.configure({
+        codec: "avc1.42001f",
+        width: w,
+        height: h,
+        bitrate: 18_000_000,
+        framerate: EXPORT_FPS,
+      });
 
-      const encodeStart = performance.now();
-      let f = 0;
+      for (let f = 0; f < bitmaps.length; f++) {
+        const frame = new VideoFrame(bitmaps[f], {
+          timestamp: Math.round((f / EXPORT_FPS) * 1_000_000),
+        });
+        encoder.encode(frame, { keyFrame: f % 30 === 0 });
+        frame.close();
+        bitmaps[f].close();
+        onProgress("encoding…", 62 + Math.round((f / bitmaps.length) * 34));
+      }
 
-      const drawNext = () => {
-        if (f >= frames.length) {
-          rec.stop();
-          return;
-        }
-        gfx.clearRect(0, 0, w, h);
-        gfx.drawImage(frames[f], 0, 0, w, h);
-        f++;
-        onProgress(
-          "encoding…",
-          62 + Math.round((f / frames.length) * 34),
-        );
-        const nextAt = encodeStart + f * (1000 / EXPORT_FPS);
-        const waitMs = Math.max(1, nextAt - performance.now());
-        setTimeout(drawNext, waitMs);
+      await encoder.flush();
+      muxer.finalize();
+
+      const blob = new Blob(
+        [target.buffer],
+        { type: "video/mp4" },
+      );
+      dlURL(
+        URL.createObjectURL(blob),
+        `eyay-slide-${String(slideIndex + 1).padStart(2, "0")}.mp4`,
+      );
+      onProgress("done ✓", 100);
+      onToast("Slide video saved — 1080×1350 .mp4");
+    } else {
+      const oc = document.createElement("canvas");
+      oc.width = w;
+      oc.height = h;
+      const gfx = oc.getContext("2d")!;
+      const fmt = pickVideoRecorderFormat();
+      const chunks: BlobPart[] = [];
+      const rec = new MediaRecorder(oc.captureStream(EXPORT_FPS), {
+        mimeType: fmt.mimeType,
+        videoBitsPerSecond: 18_000_000,
+      });
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
       };
-      drawNext();
-    });
 
-    const fileBase = `eyay-slide-${String(slideIndex + 1).padStart(2, "0")}`;
-    dlURL(
-      URL.createObjectURL(new Blob(chunks, { type: fmt.blobType })),
-      `${fileBase}.${fmt.ext}`,
-    );
-    onProgress("done ✓", 100);
-    onToast(`Slide video saved — 1080×1350 .${fmt.ext}`);
+      await new Promise<void>((resolve) => {
+        rec.onstop = () => resolve();
+        rec.start(250);
+        let f = 0;
+        const encodeStart = performance.now();
+
+        const drawNext = () => {
+          if (f >= bitmaps.length) {
+            rec.stop();
+            return;
+          }
+          gfx.clearRect(0, 0, w, h);
+          gfx.drawImage(bitmaps[f], 0, 0, w, h);
+          bitmaps[f].close();
+          f++;
+          onProgress("encoding…", 62 + Math.round((f / bitmaps.length) * 34));
+          const nextAt = encodeStart + f * (1000 / EXPORT_FPS);
+          const waitMs = Math.max(1, nextAt - performance.now());
+          setTimeout(drawNext, waitMs);
+        };
+        drawNext();
+      });
+
+      const fmt2 = pickVideoRecorderFormat();
+      dlURL(
+        URL.createObjectURL(new Blob(chunks, { type: fmt2.blobType })),
+        `eyay-slide-${String(slideIndex + 1).padStart(2, "0")}.${fmt2.ext}`,
+      );
+      onProgress("done ✓", 100);
+      onToast(`Slide video saved — 1080×1350 .${fmt2.ext}`);
+    }
   } catch (e) {
     onToast(`Slide video failed: ${(e as Error).message}`);
     onProgress("", -1);

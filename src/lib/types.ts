@@ -162,6 +162,8 @@ export interface GlobalStyle {
   size: number;
   showTag: boolean;
   showNum: boolean;
+  /** Whether to show the slide position "circle" indicator dots. */
+  showDots: boolean;
 }
 
 /** Minimal fields for slide list thumbnails (carousel + slides). */

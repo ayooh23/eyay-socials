@@ -511,7 +511,7 @@ export default function SidebarControls({
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <div className="ctrl" style={{ flex: 1 }}>
             <label>studio tag</label>
             <div className="pills">
@@ -545,6 +545,25 @@ export default function SidebarControls({
                 type="button"
                 className={`pill ${!globalStyle.showNum ? "on" : ""}`}
                 onClick={() => onChangeGlobal({ showNum: false })}
+              >
+                off
+              </button>
+            </div>
+          </div>
+          <div className="ctrl" style={{ flex: 1 }}>
+            <label>slide circles</label>
+            <div className="pills">
+              <button
+                type="button"
+                className={`pill ${globalStyle.showDots ? "on" : ""}`}
+                onClick={() => onChangeGlobal({ showDots: true })}
+              >
+                on
+              </button>
+              <button
+                type="button"
+                className={`pill ${!globalStyle.showDots ? "on" : ""}`}
+                onClick={() => onChangeGlobal({ showDots: false })}
               >
                 off
               </button>
