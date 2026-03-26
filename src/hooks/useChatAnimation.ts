@@ -1,14 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import { CHAT_ROW_REVEAL_MS, EASE_OUT } from "@/lib/motion";
+import {
+  CHAT_ROW_REVEAL_MS,
+  CHAT_STAGGER_SPEEDS,
+  EASE_OUT,
+} from "@/lib/motion";
 import type { Slide } from "@/lib/types";
-
-const SPEEDS = {
-  normal: { f: 360, g: 640 },
-  fast: { f: 220, g: 440 },
-  slow: { f: 640, g: 980 },
-} as const;
 
 const CHAT_REST = {
   opacity: "0",
@@ -24,7 +22,7 @@ export function useChatAnimation(slide: Slide, enabled: boolean) {
     if (!container) return;
 
     const rows = container.querySelectorAll<HTMLElement>("[data-bi]");
-    const sp = SPEEDS[slide.chatSpeed || "normal"];
+    const sp = CHAT_STAGGER_SPEEDS[slide.chatSpeed || "normal"];
     const animIds: number[] = [];
     let cancelled = false;
 

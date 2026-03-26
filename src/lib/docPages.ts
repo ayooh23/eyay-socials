@@ -35,8 +35,8 @@ export type DocPage =
     };
 
 export const DOC_ABOUT_EYA_TITLE = SECTION_TITLES["about-eya"];
-const DOC_BODY_CONTENT_MAX_PX = 1380;
-const DOC_ABOUT_CONTENT_MAX_PX = 1380;
+const DOC_BODY_CONTENT_MAX_PX = Math.floor(1300 * 0.9);
+const DOC_ABOUT_CONTENT_MAX_PX = Math.floor(1300 * 0.9);
 
 export function buildDocPages(
   cover: DocCoverModel,

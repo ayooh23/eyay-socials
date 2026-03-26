@@ -383,7 +383,11 @@ export default function DocMarkdownWeb({
         width: "100%",
         maxWidth: "100%",
         boxSizing: "border-box",
+        hyphens: "none",
+        WebkitHyphens: "none",
+        msHyphens: "none",
         overflowWrap: "break-word",
+        wordBreak: "normal",
       }}
     >
       {tokens.map((t, i) =>

@@ -44,6 +44,8 @@ let fontsRegistered = false;
 function registerPdfFontsOnce(): void {
   if (fontsRegistered) return;
   fontsRegistered = true;
+  // Keep words intact across lines/pages; do not auto-insert hyphens in PDF output.
+  Font.registerHyphenationCallback((word) => [word]);
   Font.register({
     family: FONT_SANS,
     src: "https://cdn.jsdelivr.net/fontsource/fonts/dm-sans@latest/latin-400-normal.woff",

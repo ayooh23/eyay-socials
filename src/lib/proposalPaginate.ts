@@ -42,6 +42,57 @@ function estimateTextHeightPx(text: string): number {
   return total;
 }
 
+/**
+ * Split text into page-fitting chunks with natural break preference:
+ * sentence boundaries first, then word boundaries as fallback.
+ */
+function splitTextByHeight(text: string, maxPx: number): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  if (estimateTextHeightPx(trimmed) <= maxPx) return [trimmed];
+
+  const sentenceParts =
+    trimmed.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g)?.map((s) => s.trim()) ?? [];
+  const parts = sentenceParts.length ? sentenceParts : [trimmed];
+
+  const chunks: string[] = [];
+  let chunk = "";
+  const pushChunk = () => {
+    if (chunk.trim()) chunks.push(chunk.trim());
+    chunk = "";
+  };
+
+  for (const part of parts) {
+    const next = chunk ? `${chunk} ${part}` : part;
+    if (estimateTextHeightPx(next) <= maxPx) {
+      chunk = next;
+      continue;
+    }
+    if (chunk) pushChunk();
+
+    if (estimateTextHeightPx(part) <= maxPx) {
+      chunk = part;
+      continue;
+    }
+
+    // Fallback: split an overlong sentence by words.
+    const words = part.split(/\s+/).filter(Boolean);
+    let wordChunk = "";
+    for (const w of words) {
+      const nextWord = wordChunk ? `${wordChunk} ${w}` : w;
+      if (estimateTextHeightPx(nextWord) > maxPx && wordChunk) {
+        chunks.push(wordChunk);
+        wordChunk = w;
+      } else {
+        wordChunk = nextWord;
+      }
+    }
+    if (wordChunk) chunk = wordChunk;
+  }
+  pushChunk();
+  return chunks.length ? chunks : [trimmed];
+}
+
 function packParagraphs(fieldTexts: string[], maxPx: number): string[][] {
   const parts: string[] = [];
   for (const t of fieldTexts) {
@@ -69,25 +120,11 @@ function packParagraphs(fieldTexts: string[], maxPx: number): string[][] {
       flush();
     }
     if (estimateTextHeightPx(p) > maxPx) {
-      const words = p.split(/\s+/);
-      let buf = "";
-      for (const w of words) {
-        const next = buf ? `${buf} ${w}` : w;
-        if (estimateTextHeightPx(next) > maxPx && buf) {
-          current.push(buf);
-          used += estimateTextHeightPx(buf) + (current.length > 1 ? LINE_PX : 0);
-          if (used > maxPx) {
-            flush();
-          }
-          buf = w;
-        } else {
-          buf = next;
-        }
-      }
-      if (buf) {
-        const bh = estimateTextHeightPx(buf) + (current.length ? LINE_PX : 0);
+      const chunks = splitTextByHeight(p, maxPx);
+      for (const chunk of chunks) {
+        const bh = estimateTextHeightPx(chunk) + (current.length ? LINE_PX : 0);
         if (used + bh > maxPx && current.length) flush();
-        current.push(buf);
+        current.push(chunk);
         used += bh;
       }
       continue;
@@ -282,21 +319,42 @@ function packScopeBlocks(
 function packTermsPages(text: string, maxPx: number): string[] {
   const t = text.trim();
   if (!t) return [""];
-  const paras = t.split(/\n\n+/);
   const pages: string[] = [];
+  const segments = t
+    // Manual page break marker: a standalone line containing five or more dashes.
+    .split(/^\s*-{5,}\s*$/m)
+    .map((s) => s.trim());
   let buf: string[] = [];
   let used = 0;
-  for (const para of paras) {
-    const h = estimateTextHeightPx(para) + (buf.length ? LINE_PX : 0);
-    if (used + h > maxPx && buf.length) {
+  const flushPage = () => {
+    if (buf.length) {
       pages.push(buf.join("\n\n"));
       buf = [];
       used = 0;
     }
-    buf.push(para);
-    used += h;
-  }
-  if (buf.length) pages.push(buf.join("\n\n"));
+  };
+  segments.forEach((segment, segmentIndex) => {
+    if (!segment) {
+      if (segmentIndex > 0) flushPage();
+      return;
+    }
+    const paras = segment.split(/\n\n+/);
+    for (const para of paras) {
+      const chunks = splitTextByHeight(para, maxPx);
+      for (const chunk of chunks) {
+        const h = estimateTextHeightPx(chunk) + (buf.length ? LINE_PX : 0);
+        if (used + h > maxPx && buf.length) {
+          flushPage();
+        }
+        buf.push(chunk);
+        used += h;
+      }
+    }
+    if (segmentIndex < segments.length - 1) {
+      flushPage();
+    }
+  });
+  flushPage();
   return pages;
 }
 

@@ -17,6 +17,8 @@ import { buildDocPages, type DocCoverModel } from "@/lib/docPages";
 import { exportDocPdf } from "@/lib/plainDocPdfExport";
 import type { ProposalProgressFn, ProposalToastFn } from "@/components/proposals/ProposalExport";
 
+const STORAGE_KEY = "eyay-docs-state";
+
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -48,11 +50,64 @@ export default function DocsTab({
   const [docType, setDocType] = useState<string>(
     DEFAULT_DOC_STUDIO_COVER.defaultDocType,
   );
+  const [preparedBy, setPreparedBy] = useState<string>(
+    DEFAULT_DOC_STUDIO_COVER.preparedBy,
+  );
   const [sourceText, setSourceText] = useState("");
   const [loadedName, setLoadedName] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const coverDateIso = useMemo(() => isoDate(new Date()), []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as Record<string, unknown>;
+        if (typeof p.docTitle === "string") setDocTitle(p.docTitle);
+        if (typeof p.clientLine === "string") setClientLine(p.clientLine);
+        if (typeof p.docNumber === "string") setDocNumber(p.docNumber);
+        if (typeof p.docType === "string") setDocType(p.docType);
+        if (typeof p.preparedBy === "string") setPreparedBy(p.preparedBy);
+        if (typeof p.sourceText === "string") setSourceText(p.sourceText);
+        if (p.loadedName === null || typeof p.loadedName === "string") {
+          setLoadedName(p.loadedName);
+        }
+      }
+    } catch {
+      /* ignore corrupt storage */
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          docTitle,
+          clientLine,
+          docNumber,
+          docType,
+          preparedBy,
+          sourceText,
+          loadedName,
+        }),
+      );
+    }, 500);
+    return () => clearTimeout(t);
+  }, [
+    clientLine,
+    docNumber,
+    docTitle,
+    docType,
+    hydrated,
+    loadedName,
+    preparedBy,
+    sourceText,
+  ]);
 
   const cover: DocCoverModel = useMemo(
     () => ({
@@ -61,11 +116,11 @@ export default function DocsTab({
       docNumber,
       proposalDate: coverDateIso,
       docType,
-      preparedBy: DEFAULT_DOC_STUDIO_COVER.preparedBy,
+      preparedBy: preparedBy.trim() || DEFAULT_DOC_STUDIO_COVER.preparedBy,
       studioEmail: DEFAULT_DOC_STUDIO_COVER.studioEmail,
       studioAddress: DEFAULT_DOC_STUDIO_COVER.studioAddress,
     }),
-    [clientLine, coverDateIso, docNumber, docTitle, docType],
+    [clientLine, coverDateIso, docNumber, docTitle, docType, preparedBy],
   );
 
   const pages = useMemo(
@@ -186,6 +241,17 @@ export default function DocsTab({
               value={docNumber}
               onChange={(e) => setDocNumber(e.target.value)}
               placeholder="DOC-2026-0324"
+              spellCheck={false}
+            />
+          </div>
+          <div className="ctrl">
+            <label htmlFor="doc-prepared-by">prepared by (cover)</label>
+            <input
+              id="doc-prepared-by"
+              type="text"
+              value={preparedBy}
+              onChange={(e) => setPreparedBy(e.target.value)}
+              placeholder="eyay studio"
               spellCheck={false}
             />
           </div>

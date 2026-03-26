@@ -2,13 +2,14 @@
 
 import { createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import DeckSlideRenderer from "@/components/DeckSlideRenderer";
 import SlideRenderer from "@/components/SlideRenderer";
 import {
+  CHAT_ROW_REVEAL_MS,
+  CHAT_STAGGER_SPEEDS,
   EASE_OUT,
   MOTION_REVEAL_MS,
-  CHAT_ROW_REVEAL_MS,
   STAGGER_BASE_MS,
   STAGGER_STEP_MS,
   TYPEWRITER_CHAR_MS,
@@ -59,12 +60,6 @@ function doubleRaf(): Promise<void> {
 
 const EXPORT_FPS = 30;
 
-const CHAT_SPEEDS = {
-  normal: { f: 360, g: 640 },
-  fast: { f: 220, g: 440 },
-  slow: { f: 640, g: 980 },
-} as const;
-
 interface SeekTarget {
   el: HTMLElement;
   delay: number;
@@ -112,7 +107,7 @@ function setupExportTargets(
       );
     }
 
-    const sp = CHAT_SPEEDS[slide.chatSpeed || "normal"];
+    const sp = CHAT_STAGGER_SPEEDS[slide.chatSpeed || "normal"];
     root.querySelectorAll<HTMLElement>("[data-bi]").forEach((el, i) => {
       applyPausedAnim(
         el,
@@ -214,11 +209,10 @@ function pickVideoRecorderFormat(): {
   ext: "mp4" | "webm";
 } {
   const mp4Candidates = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4;codecs=avc1.42E01E",
-    "video/mp4;codecs=avc1.42001E,mp4a.40.2",
-    "video/mp4;codecs=avc1.4D401E",
+    "video/mp4;codecs=avc1.640033",
     "video/mp4;codecs=avc1.640028",
+    "video/mp4;codecs=avc1.4D0033",
+    "video/mp4;codecs=avc1.4D0028",
     "video/mp4",
   ];
   for (const mimeType of mp4Candidates) {
@@ -258,17 +252,10 @@ async function captureOffscreen(
 
   await sleep(settleMs);
 
-  const canvas = await html2canvas(inner, {
-    scale: 1,
+  const canvas = await toCanvas(inner, {
     width: w,
     height: h,
-    useCORS: true,
-    backgroundColor: null,
-    logging: false,
-    x: 0,
-    y: 0,
-    scrollX: 0,
-    scrollY: 0,
+    pixelRatio: 1,
   });
 
   root.unmount();
@@ -562,15 +549,6 @@ export async function xVideo(
   }
 }
 
-function finalizeAnimatedEls(container: HTMLElement) {
-  container.querySelectorAll<HTMLElement>("[data-animate]").forEach((el) => {
-    const cs = getComputedStyle(el);
-    el.style.opacity = cs.opacity;
-    el.style.transform = cs.transform;
-    el.style.animation = "none";
-  });
-}
-
 /**
  * Animated slide video — two-phase pipeline:
  *   Phase 1  Pre-render every frame into an ImageBitmap buffer.
@@ -612,7 +590,6 @@ export async function xSlideVideo(
     await sleep(200);
 
     const { seek, tw } = setupExportTargets(inner, slide);
-    finalizeAnimatedEls(inner);
     void inner.offsetHeight;
 
     let animEndMs = seek.reduce(
@@ -629,18 +606,7 @@ export async function xSlideVideo(
     const totalMs = Math.max(2400, animEndMs + holdMs);
     const totalFrames = Math.ceil((totalMs / 1000) * EXPORT_FPS);
 
-    const h2cOpts = {
-      scale: 1,
-      width: w,
-      height: h,
-      useCORS: true,
-      backgroundColor: null as string | null,
-      logging: false,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
-    };
+    const capOpts = { width: w, height: h, pixelRatio: 1 };
 
     // Phase 1 — Pre-render all frames into an ImageBitmap buffer
     const bitmaps: ImageBitmap[] = [];
@@ -650,7 +616,7 @@ export async function xSlideVideo(
       void inner.offsetHeight;
       await doubleRaf();
 
-      const canvas = await html2canvas(inner, h2cOpts);
+      const canvas = await toCanvas(inner, capOpts);
       const bm = await createImageBitmap(canvas);
       bitmaps.push(bm);
       onProgress(
@@ -676,7 +642,8 @@ export async function xSlideVideo(
         error: (e) => { throw e; },
       });
       encoder.configure({
-        codec: "avc1.42001f",
+        // High @ L5.1 — higher than L4.0 for large frames / future resolutions; avoids AVC level errors.
+        codec: "avc1.640033",
         width: w,
         height: h,
         bitrate: 18_000_000,
